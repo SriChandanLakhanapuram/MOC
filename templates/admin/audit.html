@@ -42,19 +42,18 @@
   <select id="auditEventFilter" onchange="filterAudit()"
     class="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
     <option value="">All Events</option>
-    <option value="register">register</option>
     <option value="pay_fee">pay_fee</option>
-    <option value="issue_hall_ticket">issue_hall_ticket</option>
-    <option value="take_exam">take_exam</option>
+    <option value="payment_failed">payment_failed</option>
+    <option value="cancel_registration">cancel_registration</option>
+    <option value="generate_hall_ticket">generate_hall_ticket</option>
+    <option value="request_refund">request_refund</option>
+    <option value="mark_attendance">mark_attendance</option>
     <option value="mark_absent">mark_absent</option>
     <option value="submit_evaluation">submit_evaluation</option>
     <option value="flag_discrepancy">flag_discrepancy</option>
-    <option value="confirm_result">confirm_result</option>
     <option value="publish_result">publish_result</option>
-    <option value="revert">revert</option>
-    <option value="cancel">cancel</option>
-    <option value="refund">refund</option>
-    <option value="request_review">request_review</option>
+    <option value="revert_evaluation">revert_evaluation</option>
+    <option value="confirm_evaluation">confirm_evaluation</option>
   </select>
 
   <button onclick="clearFilters()"

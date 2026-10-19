@@ -1,10 +1,8 @@
-import oracledb
+"""Compatibility entry point for the DFA transition operation.
 
-connection = oracledb.connect(
-    user="MOC_project",
-    password="chandan",
-    dsn="localhost/xepdb1"
-)
+Importing this module is deliberately side-effect free. Use fsm.fsm.transition
+from application code; the small CLI below only runs when executed directly.
+"""
 
 TRANSITIONS = {
     ("Registered", "pay_fee"): "FeePaid",
@@ -67,6 +65,5 @@ def transition(connection, student_id, event, actor_role, actor_user_id):
     connection.commit()
     return next_state
 
-# test it
-new_state = transition(connection, "S000123", "pay_fee", "Student", 1)
-print(new_state)
+if __name__ == '__main__':
+    raise SystemExit('Use the Flask application or call transition() with an explicit connection.')

@@ -19,6 +19,7 @@ from flask import (
     redirect, url_for, flash
 )
 from db import get_db
+from werkzeug.security import check_password_hash, generate_password_hash
 
 auth_bp = Blueprint('auth', __name__)
 
@@ -78,9 +79,21 @@ def login():
 
                 db_user_id, db_name, db_email, db_hash, db_role = row
 
-                if db_hash != password_hash:
+                # Accept the prototype's legacy SHA-256 records once, then
+                # upgrade them to Werkzeug's salted password hash format.
+                valid_password = (
+                    check_password_hash(db_hash, password)
+                    if db_hash and db_hash.startswith(('pbkdf2:', 'scrypt:'))
+                    else db_hash == password_hash
+                )
+                if not valid_password:
                     flash('Invalid email or password.', 'danger')
                     return render_template('login.html')
+                if not db_hash.startswith(('pbkdf2:', 'scrypt:')):
+                    cursor.execute(
+                        'UPDATE USERS SET password_hash = :pwd WHERE user_id = :user_id_param',
+                        {'pwd': generate_password_hash(password), 'user_id_param': db_user_id}
+                    )
 
                 # ── Populate session ──────────────────────────────────────
                 session.clear()
@@ -95,9 +108,9 @@ def login():
                         """
                         SELECT student_id
                         FROM   STUDENTS
-                        WHERE  user_id = :uid
+                        WHERE  user_id = :user_id_param
                         """,
-                        {'uid': db_user_id}
+                        {'user_id_param': db_user_id}
                     )
                     s_row = cursor.fetchone()
                     if s_row:
@@ -106,7 +119,7 @@ def login():
                         # Account exists but no STUDENTS record yet
                         session['student_id'] = None
 
-                flash(f'Welcome back, {db_name}!', 'success')
+                flash(f'Welcome, {db_name}!', 'success')
                 return redirect(url_for('index'))
 
         except Exception as exc:
@@ -117,7 +130,7 @@ def login():
     return render_template('login.html')
 
 
-@auth_bp.route('/logout')
+@auth_bp.route('/logout', methods=['GET', 'POST'])
 def logout():
     """Clear the session and redirect to the login page."""
     session.clear()

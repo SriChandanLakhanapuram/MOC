@@ -1,17 +1,3 @@
-"""
-fsm.py — Deterministic Finite Automaton Engine
-===============================================
-Formal Definition: M = (Q, Σ, δ, q0, F)
-  Q  = set of all states
-  Σ  = set of all events/symbols (the alphabet)
-  δ  = transition function: Q × Σ → Q  (partial — undefined pairs rejected)
-  q0 = initial state = 'Registered'
-  F  = set of accepting/exit states = {'ResultPublished', 'Cancelled', 'Absent'}
-
-This module implements a DFA-based workflow enforcer for academic examination
-lifecycle management.  Every state change is routed through validate_transition()
-which enforces δ formally, then persisted atomically via the Oracle DB.
-"""
 import logging
 from db import get_db
 
@@ -62,7 +48,7 @@ ROLE_PERMISSIONS = {
     'Admin':     {'cancel_registration', 'request_refund'},
     'Faculty':   {'mark_attendance', 'mark_absent', 'submit_evaluation', 'flag_discrepancy'},
     'ExamCell':  {'generate_hall_ticket', 'confirm_evaluation', 'revert_evaluation', 'publish_result'},
-    'HOD':       {'confirm_evaluation', 'revert_evaluation'},
+    'HOD':       set(),  # retained as a read-only account role
     'SYSTEM':    {'payment_failed'},   # triggered by payment gateway callback
 }
 
@@ -165,30 +151,42 @@ class ExamFSM:
         def _do_transition(conn_inner):
             cur = conn_inner.cursor()
 
-            # 1. Fetch current state (with row-level lock)
-            if current_state is None:
-                cur.execute(
-                    "SELECT exam_status FROM students "
-                    "WHERE student_id = :sid FOR UPDATE",
-                    sid=student_id
-                )
-                row = cur.fetchone()
-                if not row:
-                    raise ValueError(f"Student not found: {student_id}")
-                cs = row[0]
-            else:
-                # Lock the row even if caller supplied current_state
-                cur.execute(
-                    "SELECT exam_status FROM students "
-                    "WHERE student_id = :sid FOR UPDATE",
-                    sid=student_id
-                )
-                if not cur.fetchone():
-                    raise ValueError(f"Student not found: {student_id}")
-                cs = current_state
+            # Lock and trust the row value, never a stale value from a form or
+            # an earlier unlocked SELECT.
+            cur.execute(
+                "SELECT exam_status FROM students WHERE student_id = :sid FOR UPDATE",
+                sid=student_id,
+            )
+            row = cur.fetchone()
+            if not row:
+                raise ValueError(f"Student not found: {student_id}")
+            cs = row[0]
 
             # 2. Validate via DFA
             ns = self.validate_transition(cs, event, role)
+
+            # Oracle's transition relation is the authoritative persisted
+            # definition. The Python DFA independently checks that both
+            # representations agree before a state change is committed.
+            cur.execute(
+                "SELECT to_state FROM fsm_transitions WHERE from_state = :src AND event = :ev",
+                src=cs, ev=event,
+            )
+            db_transition = cur.fetchone()
+            if not db_transition:
+                raise ValueError(f"Oracle transition table has no move for {cs} / {event}")
+            if db_transition[0] != ns:
+                raise RuntimeError("Python DFA and Oracle transition table disagree")
+
+            if role != 'SYSTEM':
+                cur.execute(
+                    "SELECT 1 FROM permissions WHERE role = :role AND event = :ev",
+                    role=role, ev=event,
+                )
+                if not cur.fetchone():
+                    raise PermissionError(f"Role '{role}' is not authorised for '{event}' in Oracle")
+            elif event != 'payment_failed':
+                raise PermissionError("SYSTEM is authorised only for the payment_failed callback")
 
             # 3. Persist new state
             cur.execute(
@@ -197,12 +195,14 @@ class ExamFSM:
             )
 
             # 4. Audit log  (user_id=0 for SYSTEM events)
-            uid = user_id if user_id else 0
+            # NULL is valid for the external gateway actor; zero would violate
+            # the AUDIT_LOG foreign key to USERS.
+            uid = user_id if user_id else None
             cur.execute(
                 """INSERT INTO audit_log (user_id, student_id, event, old_state, new_state)
-                   VALUES (:uid, :sid, :ev, :old, :new)""",
-                uid=uid, sid=student_id,
-                ev=event, old=cs, new=ns
+                   VALUES (:actor_user_id, :student_key, :event_key, :old_status, :new_status)""",
+                actor_user_id=uid, student_key=student_id,
+                event_key=event, old_status=cs, new_status=ns
             )
 
             logger.info(

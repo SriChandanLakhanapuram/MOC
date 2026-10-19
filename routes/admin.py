@@ -11,7 +11,6 @@ Capabilities:
     POST /users/add              — insert new user into USERS
 """
 
-import hashlib
 from functools import wraps
 
 from flask import (
@@ -20,6 +19,7 @@ from flask import (
 )
 from db import get_db
 from fsm import fsm as exam_fsm
+from werkzeug.security import generate_password_hash
 
 admin_bp = Blueprint('admin', __name__)
 
@@ -94,7 +94,7 @@ def dashboard():
 
 # ---------------------------------------------------------------------------
 
-@admin_bp.route('/student/<int:student_id>/refund', methods=['POST'])
+@admin_bp.route('/student/<student_id>/refund', methods=['POST'])
 @admin_required
 def refund(student_id: int):
     """Trigger 'request_refund' FSM event for the specified student."""
@@ -131,7 +131,7 @@ def refund(student_id: int):
 
 # ---------------------------------------------------------------------------
 
-@admin_bp.route('/student/<int:student_id>/cancel', methods=['POST'])
+@admin_bp.route('/student/<student_id>/cancel', methods=['POST'])
 @admin_required
 def cancel_student(student_id: int):
     """Trigger 'cancel_registration' FSM event for the specified student."""
@@ -177,10 +177,14 @@ def audit():
             cursor = conn.cursor()
             cursor.execute(
                 """
-                SELECT log_id, student_id, event, from_state, to_state,
-                       triggered_by_role, triggered_by_user_id, timestamp, notes
-                FROM   AUDIT_LOG
-                ORDER  BY timestamp DESC
+                SELECT a.log_id, a.student_id, a.event, a.old_state, a.new_state,
+                       a.log_time AS timestamp, u.name AS performed_by_name,
+                       u.role AS performed_by_role, s.name AS student_name
+                FROM   AUDIT_LOG a
+                LEFT JOIN USERS u ON u.user_id = a.user_id
+                LEFT JOIN STUDENTS st ON st.student_id = a.student_id
+                LEFT JOIN USERS s ON s.user_id = st.user_id
+                ORDER  BY a.log_time DESC
                 FETCH  FIRST 500 ROWS ONLY
                 """
             )
@@ -227,7 +231,7 @@ def users():
 def add_user():
     """
     Insert a new user into the USERS table.
-    Password is SHA-256 hashed before storage.
+    Password is stored as a salted Werkzeug password hash.
     Form fields expected: name, email, password, role
     """
     name     = request.form.get('name', '').strip()
@@ -245,7 +249,7 @@ def add_user():
         flash(f'Invalid role. Must be one of: {", ".join(sorted(valid_roles))}.', 'warning')
         return redirect(url_for('admin.users'))
 
-    password_hash = hashlib.sha256(password.encode('utf-8')).hexdigest()
+    password_hash = generate_password_hash(password)
 
     try:
         with get_db() as conn:
@@ -267,6 +271,22 @@ def add_user():
                 """,
                 {'name': name, 'email': email, 'pwd': password_hash, 'role': role}
             )
+            cursor.execute('SELECT user_id FROM USERS WHERE LOWER(email) = :email', {'email': email})
+            new_user_id = cursor.fetchone()[0]
+            if role == 'Student':
+                cursor.execute('SELECT course_code FROM COURSES ORDER BY course_code FETCH FIRST 1 ROWS ONLY')
+                course = cursor.fetchone()
+                if not course:
+                    raise ValueError('Add at least one course before creating a student account.')
+                cursor.execute(
+                    "INSERT INTO STUDENTS (student_id, user_id, course_code, exam_status) VALUES (:sid, :user_id_param, :course, 'Registered')",
+                    {'sid': f'S{new_user_id:06d}', 'user_id_param': new_user_id, 'course': course[0]},
+                )
+            elif role == 'Faculty':
+                cursor.execute(
+                    'INSERT INTO FACULTY (faculty_id, user_id, department) VALUES (:fid, :user_id_param, :dept)',
+                    {'fid': f'F{new_user_id:06d}', 'user_id_param': new_user_id, 'dept': 'General'},
+                )
             conn.commit()
             flash(f'User "{name}" ({role}) created successfully.', 'success')
 

@@ -164,5 +164,14 @@
   </footer>
 
   {% block extra_scripts %}{% endblock %}
+  <script>
+    document.querySelectorAll('form[method="post" i]').forEach(form => {
+      if (!form.querySelector('input[name="csrf_token"]')) {
+        const input = document.createElement('input');
+        input.type = 'hidden'; input.name = 'csrf_token'; input.value = '{{ csrf_token() }}';
+        form.appendChild(input);
+      }
+    });
+  </script>
 </body>
 </html>

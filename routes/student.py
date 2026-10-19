@@ -142,11 +142,13 @@ def dashboard():
                     ht_cols = [c[0].lower() for c in cursor.description]
                     hall_ticket = dict(zip(ht_cols, ht_row))
 
+        student.update(state=current_state, course=student['course_code'])
         return render_template(
             'student/dashboard.html',
             student=student,
             current_state=current_state,
             next_events=next_events,
+            available_events=next_events,
             payments=payments,
             hall_ticket=hall_ticket,
         )
@@ -194,7 +196,7 @@ def pay_fee():
                 INSERT INTO FEE_PAYMENTS
                     (student_id, amount, payment_date, status, transaction_id)
                 VALUES
-                    (:sid, :amt, SYSDATE, 'SUCCESS', :txn)
+                    (:sid, :amt, SYSDATE, 'Success', :txn)
                 """,
                 {
                     'sid': student_id,
@@ -219,7 +221,7 @@ def pay_fee():
 @student_required
 def payment_callback():
     """
-    Simulate a payment gateway callback.
+    Simulate a payment gateway callback for classroom demonstration only.
     80 % chance of success → triggers 'pay_fee'.
     20 % chance of failure → triggers 'payment_failed'.
     The system acts as role=SYSTEM / user_id=0.
@@ -240,8 +242,8 @@ def payment_callback():
                 student_id=student_id,
                 current_state=student['exam_status'],
                 event=event,
-                role='SYSTEM',
-                user_id=0,
+                role='Student' if success else 'SYSTEM',
+                user_id=session['user_id'] if success else None,
                 conn=conn,
             )
 
@@ -252,7 +254,7 @@ def payment_callback():
                     INSERT INTO FEE_PAYMENTS
                         (student_id, amount, payment_date, status, transaction_id)
                     VALUES
-                        (:sid, 1000.00, SYSDATE, 'SUCCESS', :txn)
+                        (:sid, 1000.00, SYSDATE, 'Success', :txn)
                     """,
                     {
                         'sid': student_id,
@@ -262,6 +264,11 @@ def payment_callback():
                 conn.commit()
                 flash('Payment gateway: Transaction approved. Status updated to FeePaid.', 'success')
             else:
+                cursor = conn.cursor()
+                cursor.execute(
+                    "INSERT INTO FEE_PAYMENTS (student_id, amount, payment_date, status) VALUES (:sid, 1000, SYSDATE, 'Failed')",
+                    {'sid': student_id},
+                )
                 flash('Payment gateway: Transaction declined. Please try again.', 'warning')
 
     except (ValueError, PermissionError) as exc:

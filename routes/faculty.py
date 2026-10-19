@@ -64,7 +64,7 @@ def dashboard():
                        s.course_code, s.exam_status
                 FROM   STUDENTS s
                 JOIN   USERS    u ON u.user_id = s.user_id
-                WHERE  s.exam_status IN ('HallTicketIssued', 'ExamTaken')
+                WHERE  s.exam_status IN ('HallTicketIssued', 'ExamTaken', 'Evaluated')
                 ORDER  BY s.exam_status, u.name
                 """
             )
@@ -80,7 +80,7 @@ def dashboard():
 
 # ---------------------------------------------------------------------------
 
-@faculty_bp.route('/student/<int:student_id>/attendance', methods=['POST'])
+@faculty_bp.route('/student/<student_id>/attendance', methods=['POST'])
 @faculty_required
 def mark_attendance(student_id: int):
     """
@@ -120,7 +120,7 @@ def mark_attendance(student_id: int):
 
 # ---------------------------------------------------------------------------
 
-@faculty_bp.route('/student/<int:student_id>/absent', methods=['POST'])
+@faculty_bp.route('/student/<student_id>/absent', methods=['POST'])
 @faculty_required
 def mark_absent(student_id: int):
     """
@@ -160,7 +160,7 @@ def mark_absent(student_id: int):
 
 # ---------------------------------------------------------------------------
 
-@faculty_bp.route('/student/<int:student_id>/evaluate', methods=['POST'])
+@faculty_bp.route('/student/<student_id>/evaluate', methods=['POST'])
 @faculty_required
 def evaluate(student_id: int):
     """
@@ -216,14 +216,18 @@ def evaluate(student_id: int):
             )
 
             # Insert marks record
+            cursor.execute("SELECT faculty_id FROM FACULTY WHERE user_id = :user_id_param", {'user_id_param': session['user_id']})
+            faculty_row = cursor.fetchone()
+            if not faculty_row:
+                raise ValueError('Your account is not linked to a faculty record.')
             cursor.execute(
                 """
                 INSERT INTO MARKS
                     (student_id, subject_code, subject_name,
-                     marks_obtained, max_marks, grade,
-                     evaluated_by, evaluation_date)
+                     course_code, marks_obtained, max_marks, grade,
+                     entered_by, evaluated_by, evaluation_date)
                 VALUES
-                    (:sid, :sc, :sn, :mo, :mm, :gr, :ev, SYSDATE)
+                    (:sid, :sc, :sn, :sc, :mo, :mm, :gr, :faculty_id, :ev, SYSDATE)
                 """,
                 {
                     'sid': student_id,
@@ -232,6 +236,7 @@ def evaluate(student_id: int):
                     'mo':  marks_obtained,
                     'mm':  max_marks,
                     'gr':  grade,
+                    'faculty_id': faculty_row[0],
                     'ev':  session['user_id'],
                 }
             )
@@ -248,7 +253,7 @@ def evaluate(student_id: int):
 
 # ---------------------------------------------------------------------------
 
-@faculty_bp.route('/student/<int:student_id>/flag', methods=['POST'])
+@faculty_bp.route('/student/<student_id>/flag', methods=['POST'])
 @faculty_required
 def flag_discrepancy(student_id: int):
     """

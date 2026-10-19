@@ -51,6 +51,7 @@
         <h2 class="text-gray-800 text-lg font-semibold mb-6 text-center">Sign in to your account</h2>
 
         <form method="post" action="/login" novalidate>
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
           <!-- CSRF token if using Flask-WTF -->
           {% if csrf_token is defined %}
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />

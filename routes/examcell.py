@@ -105,7 +105,7 @@ def dashboard():
 
 # ---------------------------------------------------------------------------
 
-@examcell_bp.route('/student/<int:student_id>/hall_ticket', methods=['POST'])
+@examcell_bp.route('/student/<student_id>/hall_ticket', methods=['POST'])
 @examcell_required
 def generate_hall_ticket(student_id: int):
     """
@@ -151,15 +151,16 @@ def generate_hall_ticket(student_id: int):
             cursor.execute(
                 """
                 INSERT INTO HALL_TICKETS
-                    (student_id, issue_date, exam_date, exam_center,
+                    (student_id, issued_by, issue_date, exam_date, exam_center,
                      seat_number, qr_code)
                 VALUES
-                    (:sid, SYSDATE,
+                    (:sid, :issuer, SYSDATE,
                      TO_DATE(:edate, 'YYYY-MM-DD'),
                      :ecenter, :seat, :qr)
                 """,
                 {
                     'sid':     student_id,
+                    'issuer': session['user_id'],
                     'edate':   exam_date,
                     'ecenter': exam_center,
                     'seat':    _random_seat(),
@@ -179,7 +180,7 @@ def generate_hall_ticket(student_id: int):
 
 # ---------------------------------------------------------------------------
 
-@examcell_bp.route('/student/<int:student_id>/confirm', methods=['POST'])
+@examcell_bp.route('/student/<student_id>/confirm', methods=['POST'])
 @examcell_required
 def confirm_evaluation(student_id: int):
     """
@@ -207,7 +208,7 @@ def confirm_evaluation(student_id: int):
                 conn=conn,
             )
             conn.commit()
-            flash(f'Evaluation confirmed for student {student_id}. Result published.', 'success')
+            flash(f'Evaluation confirmed for student {student_id}; the record is now Evaluated and can be published.', 'success')
 
     except (ValueError, PermissionError) as exc:
         flash(f'Cannot confirm evaluation: {exc}', 'danger')
@@ -219,7 +220,7 @@ def confirm_evaluation(student_id: int):
 
 # ---------------------------------------------------------------------------
 
-@examcell_bp.route('/student/<int:student_id>/revert', methods=['POST'])
+@examcell_bp.route('/student/<student_id>/revert', methods=['POST'])
 @examcell_required
 def revert_evaluation(student_id: int):
     """
@@ -259,7 +260,7 @@ def revert_evaluation(student_id: int):
 
 # ---------------------------------------------------------------------------
 
-@examcell_bp.route('/student/<int:student_id>/publish', methods=['POST'])
+@examcell_bp.route('/student/<student_id>/publish', methods=['POST'])
 @examcell_required
 def publish_result(student_id: int):
     """

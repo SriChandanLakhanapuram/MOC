@@ -4,10 +4,34 @@ Main Flask application: blueprints, routes, error handlers.
 """
 
 import os
-from flask import Flask, session, redirect, url_for, render_template, jsonify
+import hmac
+import secrets
+from flask import Flask, session, redirect, url_for, render_template, jsonify, request
 
 app = Flask(__name__)
-app.secret_key = 'moc_exam_secret_key_2026'  # TODO: change in production
+app.secret_key = os.environ.get('FLASK_SECRET_KEY', 'local-demo-change-me')
+app.config['SESSION_COOKIE_HTTPONLY'] = True
+app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
+app.config['SESSION_COOKIE_SECURE'] = os.environ.get('COOKIE_SECURE', '0') == '1'
+
+@app.context_processor
+def inject_session_user():
+    """Templates use this small session-backed user object for navigation."""
+    class SessionUser:
+        is_authenticated = 'user_id' in session
+        name = session.get('name', '')
+        role = session.get('role', '')
+    token = session.setdefault('_csrf_token', secrets.token_urlsafe(32))
+    return {'current_user': SessionUser(), 'csrf_token': lambda: token}
+
+
+@app.before_request
+def protect_form_posts():
+    if request.method == 'POST':
+        expected = session.get('_csrf_token', '')
+        supplied = request.form.get('csrf_token') or request.headers.get('X-CSRF-Token', '')
+        if not expected or not supplied or not hmac.compare_digest(expected, supplied):
+            return render_template('error.html', code=400, msg='Invalid or expired form token'), 400
 
 # ---------------------------------------------------------------------------
 # Blueprint registration
@@ -58,6 +82,11 @@ def api_fsm():
     return jsonify(exam_fsm.to_dict())
 
 
+@app.route('/fsm')
+def fsm_diagram():
+    return render_template('fsm_diagram.html', fsm_model=exam_fsm.to_dict())
+
+
 # ---------------------------------------------------------------------------
 # Papers (markdown research/reference papers)
 # ---------------------------------------------------------------------------
@@ -82,7 +111,7 @@ def view_paper(filename):
     papers_dir = os.path.join(app.root_path, 'papers')
     # Basic path traversal guard
     filepath = os.path.realpath(os.path.join(papers_dir, filename))
-    if not filepath.startswith(os.path.realpath(papers_dir)):
+    if os.path.commonpath([filepath, os.path.realpath(papers_dir)]) != os.path.realpath(papers_dir):
         return render_template('error.html', code=403, msg='Access Forbidden'), 403
     if not os.path.exists(filepath):
         return render_template('error.html', code=404, msg='Paper not found'), 404
@@ -102,6 +131,11 @@ def forbidden(e):
     return render_template('error.html', code=403, msg='Access Forbidden'), 403
 
 
+@app.errorhandler(400)
+def bad_request(e):
+    return render_template('error.html', code=400, msg='Bad Request'), 400
+
+
 @app.errorhandler(404)
 def not_found(e):
     return render_template('error.html', code=404, msg='Page Not Found'), 404
@@ -117,4 +151,4 @@ def server_error(e):
 # ---------------------------------------------------------------------------
 
 if __name__ == '__main__':
-    app.run(debug=True, port=5000)
+    app.run(debug=os.environ.get('FLASK_DEBUG', '0') == '1', port=5000)
