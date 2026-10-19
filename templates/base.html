@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>{% block title %}ExamFlow{% endblock %} | University Examination Management System</title>
+
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            primary: { DEFAULT: '#4f46e5', dark: '#3730a3', light: '#818cf8' }
+          }
+        }
+      }
+    };
+  </script>
+
+  <!-- Chart.js CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+
+  <!-- D3.js CDN (for FSM visualizer) -->
+  <script src="https://cdn.jsdelivr.net/npm/d3@7.8.5/dist/d3.min.js"></script>
+
+  <!-- Inter font -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+
+  <style>
+    body { font-family: 'Inter', sans-serif; }
+    .state-Registered      { @apply bg-gray-100 text-gray-700; }
+    .state-FeePaid         { @apply bg-blue-100 text-blue-700; }
+    .state-HallTicketIssued{ @apply bg-yellow-100 text-yellow-700; }
+    .state-ExamTaken       { @apply bg-orange-100 text-orange-700; }
+    .state-Evaluated       { @apply bg-purple-100 text-purple-700; }
+    .state-UnderReview     { @apply bg-red-100 text-red-700; }
+    .state-ResultPublished { @apply bg-green-100 text-green-700; }
+    .state-Cancelled       { @apply bg-red-200 text-red-800; }
+    .state-Absent          { @apply bg-gray-200 text-gray-600; }
+  </style>
+  {% block extra_head %}{% endblock %}
+</head>
+<body class="bg-gray-50 min-h-screen flex flex-col">
+
+  <!-- ── Navigation Bar ──────────────────────────────────────────────── -->
+  {% if current_user and current_user.is_authenticated %}
+  <nav class="bg-indigo-700 shadow-lg">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="flex items-center justify-between h-16">
+
+        <!-- Brand -->
+        <div class="flex items-center space-x-3">
+          <span class="text-2xl">🎓</span>
+          <a href="/" class="text-white text-xl font-bold tracking-tight hover:text-indigo-200 transition">ExamFlow</a>
+        </div>
+
+        <!-- Right section -->
+        <div class="flex items-center space-x-4">
+          <!-- User name -->
+          <span class="text-indigo-100 text-sm font-medium hidden sm:block">
+            {{ current_user.name }}
+          </span>
+
+          <!-- Role badge -->
+          {% set role_colors = {
+            'student'  : 'bg-sky-500 text-white',
+            'admin'    : 'bg-rose-500 text-white',
+            'faculty'  : 'bg-emerald-500 text-white',
+            'examcell' : 'bg-amber-500 text-white'
+          } %}
+          <span class="px-2.5 py-0.5 rounded-full text-xs font-semibold
+            {{ role_colors.get(current_user.role, 'bg-gray-400 text-white') }}">
+            {{ current_user.role | capitalize }}
+          </span>
+
+          <!-- FSM diagram link -->
+          <a href="/fsm" class="text-indigo-200 hover:text-white text-sm hidden md:block transition">
+            FSM Diagram
+          </a>
+
+          <!-- Research papers link -->
+          <a href="/papers" class="text-indigo-200 hover:text-white text-sm hidden md:block transition">
+            Papers
+          </a>
+
+          <!-- Logout -->
+          <form action="/logout" method="post">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() if csrf_token is defined else '' }}" />
+            <button type="submit"
+              class="bg-white text-indigo-700 hover:bg-indigo-50 px-3 py-1.5 rounded-lg text-sm font-semibold shadow transition">
+              Logout
+            </button>
+          </form>
+        </div>
+
+      </div>
+    </div>
+  </nav>
+  {% endif %}
+
+  <!-- ── Flash Messages ──────────────────────────────────────────────── -->
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+    <div class="max-w-7xl mx-auto w-full px-4 pt-4 space-y-2" id="flash-container">
+      {% for category, message in messages %}
+        {% if category == 'success' %}
+          <div class="flex items-start gap-3 bg-green-50 border border-green-300 text-green-800 px-4 py-3 rounded-lg shadow-sm flash-msg">
+            <span class="text-green-500 mt-0.5">✔</span>
+            <span class="text-sm">{{ message }}</span>
+            <button onclick="this.parentElement.remove()" class="ml-auto text-green-400 hover:text-green-600 font-bold">✕</button>
+          </div>
+        {% elif category == 'error' or category == 'danger' %}
+          <div class="flex items-start gap-3 bg-red-50 border border-red-300 text-red-800 px-4 py-3 rounded-lg shadow-sm flash-msg">
+            <span class="text-red-500 mt-0.5">✖</span>
+            <span class="text-sm">{{ message }}</span>
+            <button onclick="this.parentElement.remove()" class="ml-auto text-red-400 hover:text-red-600 font-bold">✕</button>
+          </div>
+        {% elif category == 'warning' %}
+          <div class="flex items-start gap-3 bg-yellow-50 border border-yellow-300 text-yellow-800 px-4 py-3 rounded-lg shadow-sm flash-msg">
+            <span class="text-yellow-500 mt-0.5">⚠</span>
+            <span class="text-sm">{{ message }}</span>
+            <button onclick="this.parentElement.remove()" class="ml-auto text-yellow-400 hover:text-yellow-600 font-bold">✕</button>
+          </div>
+        {% else %}
+          <div class="flex items-start gap-3 bg-blue-50 border border-blue-300 text-blue-800 px-4 py-3 rounded-lg shadow-sm flash-msg">
+            <span class="text-blue-500 mt-0.5">ℹ</span>
+            <span class="text-sm">{{ message }}</span>
+            <button onclick="this.parentElement.remove()" class="ml-auto text-blue-400 hover:text-blue-600 font-bold">✕</button>
+          </div>
+        {% endif %}
+      {% endfor %}
+    </div>
+    <script>
+      // Auto-dismiss flash messages after 5s
+      setTimeout(() => {
+        document.querySelectorAll('.flash-msg').forEach(el => {
+          el.style.transition = 'opacity 0.4s';
+          el.style.opacity = '0';
+          setTimeout(() => el.remove(), 400);
+        });
+      }, 5000);
+    </script>
+    {% endif %}
+  {% endwith %}
+
+  <!-- ── Main Content ────────────────────────────────────────────────── -->
+  <main class="flex-1 max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-8">
+    {% block content %}{% endblock %}
+  </main>
+
+  <!-- ── Footer ─────────────────────────────────────────────────────── -->
+  <footer class="bg-white border-t border-gray-200 mt-auto">
+    <div class="max-w-7xl mx-auto px-4 py-4 flex flex-col sm:flex-row items-center justify-between gap-2">
+      <p class="text-gray-500 text-xs">
+        University Examination Management System &nbsp;|&nbsp; Powered by Formal State Machines
+      </p>
+      <p class="text-gray-400 text-xs">
+        &copy; {{ now.year if now is defined else '2025' }} ExamFlow
+      </p>
+    </div>
+  </footer>
+
+  {% block extra_scripts %}{% endblock %}
+</body>
+</html>

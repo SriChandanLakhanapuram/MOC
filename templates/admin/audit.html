@@ -1,0 +1,201 @@
+{% extends "base.html" %}
+{% block title %}Audit Log{% endblock %}
+
+{% block content %}
+
+<!-- ── Page Header ─────────────────────────────────────────────────────── -->
+<div class="mb-8 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+  <div>
+    <h1 class="text-2xl font-bold text-gray-900">Full Audit Log</h1>
+    <p class="text-gray-500 text-sm mt-1">Complete event history across all students and users.</p>
+  </div>
+  <a href="/admin/dashboard"
+    class="inline-flex items-center gap-2 text-sm text-indigo-600 hover:text-indigo-800 font-medium transition">
+    ← Back to Dashboard
+  </a>
+</div>
+
+<!-- ── Filters ────────────────────────────────────────────────────────── -->
+<div class="bg-white rounded-xl shadow-sm border border-gray-200 p-4 mb-6 flex flex-wrap items-center gap-3">
+  <input
+    type="text"
+    id="auditSearch"
+    placeholder="Search user, student, event…"
+    oninput="filterAudit()"
+    class="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 w-60"
+  />
+
+  <select id="auditStateFilter" onchange="filterAudit()"
+    class="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+    <option value="">All New States</option>
+    <option value="Registered">Registered</option>
+    <option value="FeePaid">FeePaid</option>
+    <option value="HallTicketIssued">HallTicketIssued</option>
+    <option value="ExamTaken">ExamTaken</option>
+    <option value="Evaluated">Evaluated</option>
+    <option value="UnderReview">UnderReview</option>
+    <option value="ResultPublished">ResultPublished</option>
+    <option value="Cancelled">Cancelled</option>
+    <option value="Absent">Absent</option>
+  </select>
+
+  <select id="auditEventFilter" onchange="filterAudit()"
+    class="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+    <option value="">All Events</option>
+    <option value="register">register</option>
+    <option value="pay_fee">pay_fee</option>
+    <option value="issue_hall_ticket">issue_hall_ticket</option>
+    <option value="take_exam">take_exam</option>
+    <option value="mark_absent">mark_absent</option>
+    <option value="submit_evaluation">submit_evaluation</option>
+    <option value="flag_discrepancy">flag_discrepancy</option>
+    <option value="confirm_result">confirm_result</option>
+    <option value="publish_result">publish_result</option>
+    <option value="revert">revert</option>
+    <option value="cancel">cancel</option>
+    <option value="refund">refund</option>
+    <option value="request_review">request_review</option>
+  </select>
+
+  <button onclick="clearFilters()"
+    class="px-3 py-2 border border-gray-300 text-gray-500 hover:bg-gray-50 rounded-lg text-sm transition">
+    Clear
+  </button>
+
+  <span class="ml-auto text-sm text-gray-400" id="auditCount">
+    {{ logs | length }} entries
+  </span>
+</div>
+
+<!-- ── Log Table ──────────────────────────────────────────────────────── -->
+<div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+  <div class="overflow-x-auto">
+    <table class="min-w-full text-sm" id="auditTable">
+      <thead>
+        <tr class="bg-gray-50 text-gray-500 text-left">
+          <th class="px-4 py-3 font-medium rounded-tl-lg whitespace-nowrap">Log ID</th>
+          <th class="px-4 py-3 font-medium whitespace-nowrap">Timestamp</th>
+          <th class="px-4 py-3 font-medium">Performed By</th>
+          <th class="px-4 py-3 font-medium">Student</th>
+          <th class="px-4 py-3 font-medium">Event</th>
+          <th class="px-4 py-3 font-medium rounded-tr-lg">State Change</th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-gray-100" id="auditBody">
+        {% for log in logs %}
+        <tr class="hover:bg-gray-50 transition audit-row"
+            data-state="{{ log.new_state }}"
+            data-event="{{ log.event }}">
+
+          <!-- Log ID -->
+          <td class="px-4 py-3 font-mono text-xs text-gray-400">#{{ log.log_id }}</td>
+
+          <!-- Timestamp -->
+          <td class="px-4 py-3 text-gray-500 whitespace-nowrap text-xs">{{ log.timestamp }}</td>
+
+          <!-- Performed By -->
+          <td class="px-4 py-3">
+            <div class="font-medium text-gray-800">{{ log.performed_by_name }}</div>
+            <div class="text-xs text-gray-400">{{ log.performed_by_role | capitalize }}</div>
+          </td>
+
+          <!-- Student -->
+          <td class="px-4 py-3">
+            <div class="font-medium text-gray-800">{{ log.student_name }}</div>
+            <div class="text-xs font-mono text-indigo-500">{{ log.student_id }}</div>
+          </td>
+
+          <!-- Event -->
+          <td class="px-4 py-3">
+            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-indigo-50 text-indigo-700 border border-indigo-100">
+              {{ log.event | replace('_',' ') | title }}
+            </span>
+          </td>
+
+          <!-- State Change -->
+          <td class="px-4 py-3">
+            <div class="flex items-center gap-2 flex-wrap">
+              <!-- Old state badge -->
+              {% set old_colors = {
+                'Registered'       : 'bg-gray-100 text-gray-700 border-gray-300',
+                'FeePaid'          : 'bg-blue-100 text-blue-700 border-blue-300',
+                'HallTicketIssued' : 'bg-yellow-100 text-yellow-700 border-yellow-300',
+                'ExamTaken'        : 'bg-orange-100 text-orange-700 border-orange-300',
+                'Evaluated'        : 'bg-purple-100 text-purple-700 border-purple-300',
+                'UnderReview'      : 'bg-red-100 text-red-700 border-red-300',
+                'ResultPublished'  : 'bg-green-100 text-green-700 border-green-300',
+                'Cancelled'        : 'bg-red-200 text-red-800 border-red-400',
+                'Absent'           : 'bg-gray-200 text-gray-600 border-gray-400'
+              } %}
+              {% if log.old_state %}
+              <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium border
+                {{ old_colors.get(log.old_state, 'bg-gray-100 text-gray-600 border-gray-200') }}">
+                {{ log.old_state }}
+              </span>
+              {% else %}
+              <span class="text-gray-300 text-xs italic">—</span>
+              {% endif %}
+
+              <!-- Arrow -->
+              <svg class="w-4 h-4 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+              </svg>
+
+              <!-- New state badge -->
+              <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium border
+                {{ old_colors.get(log.new_state, 'bg-gray-100 text-gray-600 border-gray-200') }}">
+                {{ log.new_state }}
+              </span>
+            </div>
+          </td>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="6" class="px-4 py-10 text-center text-gray-400 italic">No audit log entries found.</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <!-- No-results -->
+  <div id="noAuditResults" class="hidden py-10 text-center text-gray-400 italic text-sm">
+    No entries match your search / filter.
+  </div>
+</div>
+
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+  function filterAudit() {
+    const q      = document.getElementById('auditSearch').value.toLowerCase();
+    const state  = document.getElementById('auditStateFilter').value;
+    const event  = document.getElementById('auditEventFilter').value;
+    const rows   = document.querySelectorAll('.audit-row');
+    let visible  = 0;
+
+    rows.forEach(row => {
+      const text  = row.textContent.toLowerCase();
+      const rState = row.dataset.state;
+      const rEvent = row.dataset.event;
+      const show  = text.includes(q)
+                    && (!state || rState === state)
+                    && (!event || rEvent === event);
+      row.style.display = show ? '' : 'none';
+      if (show) visible++;
+    });
+
+    document.getElementById('noAuditResults').classList.toggle('hidden', visible > 0);
+    document.getElementById('auditTable').classList.toggle('hidden', visible === 0);
+    document.getElementById('auditCount').textContent = `${visible} entries`;
+  }
+
+  function clearFilters() {
+    document.getElementById('auditSearch').value = '';
+    document.getElementById('auditStateFilter').value = '';
+    document.getElementById('auditEventFilter').value = '';
+    filterAudit();
+  }
+</script>
+{% endblock %}

@@ -1,0 +1,312 @@
+{% extends "base.html" %}
+{% block title %}Exam Cell Dashboard{% endblock %}
+
+{% block content %}
+
+<!-- ── Page Header ─────────────────────────────────────────────────────── -->
+<div class="mb-8">
+  <h1 class="text-2xl font-bold text-gray-900">Exam Cell Dashboard</h1>
+  <p class="text-gray-500 text-sm mt-1">Manage hall tickets, evaluations, reviews, and result publication.</p>
+</div>
+
+<div class="grid grid-cols-1 xl:grid-cols-4 gap-6">
+
+  <!-- ═══════════════ MAIN PANELS (3/4 width) ════════════════════════ -->
+  <div class="xl:col-span-3 space-y-6">
+
+    <!-- ── Panel 1: Generate Hall Tickets (FeePaid students) ────────── -->
+    <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+      <div class="flex items-center gap-3 mb-5">
+        <div class="w-9 h-9 bg-blue-100 rounded-full flex items-center justify-center text-lg">🎫</div>
+        <div>
+          <h2 class="text-base font-semibold text-gray-800">Generate Hall Tickets</h2>
+          <p class="text-xs text-gray-400">Students in <span class="font-medium text-blue-600">FeePaid</span> state</p>
+        </div>
+        <span class="ml-auto bg-blue-100 text-blue-700 text-xs font-bold px-2.5 py-0.5 rounded-full border border-blue-200">
+          {{ fee_paid_students | length }}
+        </span>
+      </div>
+
+      {% if fee_paid_students %}
+        <!-- Bulk generation form -->
+        <form method="post" action="/examcell/generate_hall_tickets" class="mb-5">
+          {% if csrf_token is defined %}<input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />{% endif %}
+          <div class="flex flex-wrap items-end gap-4 p-4 bg-blue-50 border border-blue-100 rounded-xl">
+            <div>
+              <label class="block text-xs text-blue-700 font-medium mb-1">Exam Date</label>
+              <input
+                type="date"
+                name="exam_date"
+                required
+                class="px-3 py-2 border border-blue-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+            <div>
+              <label class="block text-xs text-blue-700 font-medium mb-1">Exam Time</label>
+              <input
+                type="time"
+                name="exam_time"
+                class="px-3 py-2 border border-blue-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+            <div>
+              <label class="block text-xs text-blue-700 font-medium mb-1">Venue</label>
+              <input
+                type="text"
+                name="venue"
+                placeholder="e.g. Main Hall - A"
+                class="px-3 py-2 border border-blue-200 rounded-lg text-sm w-44 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+            <button type="submit"
+              class="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-lg shadow transition"
+              onclick="return confirm('Generate hall tickets for ALL fee-paid students with the selected date?')">
+              🎫 Issue All Hall Tickets
+            </button>
+          </div>
+        </form>
+
+        <!-- Individual listing -->
+        <div class="overflow-x-auto">
+          <table class="min-w-full text-sm">
+            <thead>
+              <tr class="bg-gray-50 text-gray-500 text-left">
+                <th class="px-3 py-2 font-medium rounded-tl-lg">
+                  <input type="checkbox" id="selectAll" onchange="toggleAllCheckboxes(this)" class="rounded" />
+                </th>
+                <th class="px-3 py-2 font-medium">Student ID</th>
+                <th class="px-3 py-2 font-medium">Name</th>
+                <th class="px-3 py-2 font-medium">Course</th>
+                <th class="px-3 py-2 font-medium rounded-tr-lg text-center">Action</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-100">
+              {% for s in fee_paid_students %}
+              <tr class="hover:bg-gray-50 transition">
+                <td class="px-3 py-2">
+                  <input type="checkbox" name="selected_students" value="{{ s.student_id }}" class="student-cb rounded" />
+                </td>
+                <td class="px-3 py-2 font-mono text-indigo-600 text-xs">{{ s.student_id }}</td>
+                <td class="px-3 py-2 font-medium text-gray-800">{{ s.name }}</td>
+                <td class="px-3 py-2 text-gray-500">{{ s.course }}</td>
+                <td class="px-3 py-2 text-center">
+                  <form method="post" action="/examcell/issue_hall_ticket" class="inline">
+                    {% if csrf_token is defined %}<input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />{% endif %}
+                    <input type="hidden" name="student_id" value="{{ s.student_id }}" />
+                    <button type="submit"
+                      class="px-3 py-1.5 text-xs font-semibold rounded-lg bg-blue-600 hover:bg-blue-700 text-white shadow transition">
+                      Issue
+                    </button>
+                  </form>
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      {% else %}
+        <div class="text-center py-10">
+          <div class="text-4xl mb-3">📭</div>
+          <p class="text-gray-400 text-sm italic">No fee-paid students awaiting hall tickets.</p>
+        </div>
+      {% endif %}
+    </div>
+
+    <!-- ── Panel 2: Pending Evaluations (Evaluated students) ─────────── -->
+    <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+      <div class="flex items-center gap-3 mb-5">
+        <div class="w-9 h-9 bg-purple-100 rounded-full flex items-center justify-center text-lg">📝</div>
+        <div>
+          <h2 class="text-base font-semibold text-gray-800">Pending Evaluations</h2>
+          <p class="text-xs text-gray-400">Students in <span class="font-medium text-purple-600">Evaluated</span> state</p>
+        </div>
+        <span class="ml-auto bg-purple-100 text-purple-700 text-xs font-bold px-2.5 py-0.5 rounded-full border border-purple-200">
+          {{ evaluated_students | length }}
+        </span>
+      </div>
+
+      {% if evaluated_students %}
+        <div class="overflow-x-auto">
+          <table class="min-w-full text-sm">
+            <thead>
+              <tr class="bg-gray-50 text-gray-500 text-left">
+                <th class="px-3 py-2 font-medium rounded-tl-lg">Student ID</th>
+                <th class="px-3 py-2 font-medium">Name</th>
+                <th class="px-3 py-2 font-medium">Course</th>
+                <th class="px-3 py-2 font-medium text-center">Marks</th>
+                <th class="px-3 py-2 font-medium rounded-tr-lg text-center">Actions</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-100">
+              {% for s in evaluated_students %}
+              <tr class="hover:bg-gray-50 transition">
+                <td class="px-3 py-2 font-mono text-indigo-600 text-xs">{{ s.student_id }}</td>
+                <td class="px-3 py-2 font-medium text-gray-800">{{ s.name }}</td>
+                <td class="px-3 py-2 text-gray-500">{{ s.course }}</td>
+                <td class="px-3 py-2 text-center font-semibold text-purple-600">{{ s.marks }}</td>
+                <td class="px-3 py-2">
+                  <div class="flex items-center justify-center gap-2 flex-wrap">
+                    <!-- Confirm (publish) -->
+                    <form method="post" action="/examcell/action" class="inline">
+                      {% if csrf_token is defined %}<input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />{% endif %}
+                      <input type="hidden" name="action" value="publish_result" />
+                      <input type="hidden" name="student_id" value="{{ s.student_id }}" />
+                      <button type="submit"
+                        class="px-3 py-1.5 text-xs font-semibold rounded-lg bg-green-500 hover:bg-green-600 text-white shadow transition"
+                        onclick="return confirm('Publish result for {{ s.name }}?')">
+                        ✔ Publish
+                      </button>
+                    </form>
+
+                    <!-- Revert -->
+                    <form method="post" action="/examcell/action" class="inline">
+                      {% if csrf_token is defined %}<input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />{% endif %}
+                      <input type="hidden" name="action" value="revert" />
+                      <input type="hidden" name="student_id" value="{{ s.student_id }}" />
+                      <button type="submit"
+                        class="px-3 py-1.5 text-xs font-semibold rounded-lg bg-yellow-500 hover:bg-yellow-600 text-white shadow transition"
+                        onclick="return confirm('Revert evaluation for {{ s.name }}?')">
+                        ↩ Revert
+                      </button>
+                    </form>
+                  </div>
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      {% else %}
+        <div class="text-center py-10">
+          <div class="text-4xl mb-3">✅</div>
+          <p class="text-gray-400 text-sm italic">No pending evaluations to review.</p>
+        </div>
+      {% endif %}
+    </div>
+
+    <!-- ── Panel 3: Under Review students ─────────────────────────────── -->
+    <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+      <div class="flex items-center gap-3 mb-5">
+        <div class="w-9 h-9 bg-red-100 rounded-full flex items-center justify-center text-lg">🔍</div>
+        <div>
+          <h2 class="text-base font-semibold text-gray-800">Under Review</h2>
+          <p class="text-xs text-gray-400">Students flagged for re-evaluation</p>
+        </div>
+        <span class="ml-auto bg-red-100 text-red-700 text-xs font-bold px-2.5 py-0.5 rounded-full border border-red-200">
+          {{ review_students | length }}
+        </span>
+      </div>
+
+      {% if review_students %}
+        <div class="overflow-x-auto">
+          <table class="min-w-full text-sm">
+            <thead>
+              <tr class="bg-gray-50 text-gray-500 text-left">
+                <th class="px-3 py-2 font-medium rounded-tl-lg">Student ID</th>
+                <th class="px-3 py-2 font-medium">Name</th>
+                <th class="px-3 py-2 font-medium">Course</th>
+                <th class="px-3 py-2 font-medium text-center">Marks</th>
+                <th class="px-3 py-2 font-medium rounded-tr-lg text-center">Actions</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-100">
+              {% for s in review_students %}
+              <tr class="hover:bg-gray-50 transition">
+                <td class="px-3 py-2 font-mono text-indigo-600 text-xs">{{ s.student_id }}</td>
+                <td class="px-3 py-2 font-medium text-gray-800">{{ s.name }}</td>
+                <td class="px-3 py-2 text-gray-500">{{ s.course }}</td>
+                <td class="px-3 py-2 text-center font-semibold text-red-600">{{ s.marks }}</td>
+                <td class="px-3 py-2">
+                  <div class="flex items-center justify-center gap-2 flex-wrap">
+                    <!-- Confirm review → publish -->
+                    <form method="post" action="/examcell/action" class="inline">
+                      {% if csrf_token is defined %}<input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />{% endif %}
+                      <input type="hidden" name="action" value="confirm_result" />
+                      <input type="hidden" name="student_id" value="{{ s.student_id }}" />
+                      <button type="submit"
+                        class="px-3 py-1.5 text-xs font-semibold rounded-lg bg-green-500 hover:bg-green-600 text-white shadow transition"
+                        onclick="return confirm('Confirm review and publish result for {{ s.name }}?')">
+                        ✔ Confirm & Publish
+                      </button>
+                    </form>
+
+                    <!-- Revert back to Evaluated -->
+                    <form method="post" action="/examcell/action" class="inline">
+                      {% if csrf_token is defined %}<input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />{% endif %}
+                      <input type="hidden" name="action" value="revert" />
+                      <input type="hidden" name="student_id" value="{{ s.student_id }}" />
+                      <button type="submit"
+                        class="px-3 py-1.5 text-xs font-semibold rounded-lg bg-yellow-500 hover:bg-yellow-600 text-white shadow transition"
+                        onclick="return confirm('Revert {{ s.name }} back to Evaluated state?')">
+                        ↩ Revert
+                      </button>
+                    </form>
+                  </div>
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      {% else %}
+        <div class="text-center py-10">
+          <div class="text-4xl mb-3">✅</div>
+          <p class="text-gray-400 text-sm italic">No students currently under review.</p>
+        </div>
+      {% endif %}
+    </div>
+
+  </div>
+
+  <!-- ═══════════════ STATS SIDEBAR (1/4 width) ══════════════════════ -->
+  <div class="space-y-4">
+    <h2 class="text-base font-semibold text-gray-700">Quick Stats</h2>
+
+    {% set stat_cards = [
+      ('Total Students',      stats.total,               'bg-indigo-600', '🎓'),
+      ('FeePaid',             stats.fee_paid,             'bg-blue-500',   '💳'),
+      ('Hall Tickets Issued', stats.hall_ticket_issued,  'bg-yellow-500', '🎫'),
+      ('Exam Taken',          stats.exam_taken,           'bg-orange-500', '✏'),
+      ('Evaluated',           stats.evaluated,            'bg-purple-500', '📝'),
+      ('Under Review',        stats.under_review,         'bg-red-500',    '🔍'),
+      ('Result Published',    stats.result_published,     'bg-green-500',  '🏆'),
+      ('Cancelled',           stats.cancelled,            'bg-gray-500',   '✖'),
+      ('Absent',              stats.absent,               'bg-gray-400',   '👤'),
+    ] %}
+
+    {% for label, count, bg, icon in stat_cards %}
+    <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-4 flex items-center gap-4">
+      <div class="w-10 h-10 rounded-full {{ bg }} flex items-center justify-center text-white text-lg flex-shrink-0">
+        {{ icon }}
+      </div>
+      <div>
+        <div class="text-xl font-bold text-gray-800">{{ count | default(0) }}</div>
+        <div class="text-xs text-gray-500 leading-tight">{{ label }}</div>
+      </div>
+    </div>
+    {% endfor %}
+
+    <!-- Audit log link -->
+    <a href="/admin/audit"
+      class="block w-full text-center bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-sm font-semibold py-2.5 rounded-xl border border-indigo-200 transition mt-2">
+      📋 View Full Audit Log
+    </a>
+
+    <!-- FSM diagram link -->
+    <a href="/fsm"
+      class="block w-full text-center bg-gray-50 hover:bg-gray-100 text-gray-600 text-sm font-semibold py-2.5 rounded-xl border border-gray-200 transition">
+      🔀 FSM Diagram
+    </a>
+  </div>
+
+</div>
+
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+  function toggleAllCheckboxes(master) {
+    document.querySelectorAll('.student-cb').forEach(cb => { cb.checked = master.checked; });
+  }
+</script>
+{% endblock %}

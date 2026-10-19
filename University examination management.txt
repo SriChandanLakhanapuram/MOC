@@ -1,0 +1,42 @@
+University examination management system
+
+States
+-> Registered , FeePaid, HallTicketIssued, ExamTaken, Evaluated, UnderReview, ResultPublished(Exit State), Cancelled(Exit State), Absent(Exit State)
+
+Transition Table
+
+-> 
+
+Current state        Event        	  Next state
+---------------    ----------    	--------------
+Registered	    pay_fee	    	  FeePaid
+Registered	  payment_failed	 Registered
+Registered	cancel_registration	 Cancelled
+FeePaid	       generate_hall_ticket	HallTicketIssued
+FeePaid	          request_refund	 Registered
+HallTicketIssued  mark_attendance	 ExamTaken
+HallTicketIssued  mark_absent	         Absent
+ExamTaken	submit_evaluation	 Evaluated
+Evaluated	flag_discrepancy	UnderReview
+Evaluated	publish_result	        ResultPublished
+UnderReview	revert_evaluation	 ExamTaken
+UnderReview	confirm_evaluation	 Evaluated
+
+Who triggers which event
+
+Event				Allowed role(s)
+pay_fee				   Student
+cancel_registration		  Student, Admin
+generate_hall_ticket		  Exam Cell
+request_refund			  Admin
+mark_attendance			  Faculty (invigilator)
+mark_absent			  Faculty
+submit_evaluation		  Faculty
+flag_discrepancy		  Faculty
+confirm_evaluation		  Exam Cell
+revert_evaluation		  Exam Cell
+publish_result			  Exam Cell
+
+
+
+payment_failed — triggered by the payment gateway callback

@@ -1,0 +1,312 @@
+{% extends "base.html" %}
+{% block title %}FSM Diagram | ExamFlow{% endblock %}
+
+{% block extra_head %}
+<style>
+  /* D3 graph canvas */
+  #fsm-svg { width: 100%; height: 100%; }
+
+  /* Node circles */
+  .fsm-node circle {
+    stroke-width: 2.5;
+    cursor: pointer;
+    transition: r 0.15s;
+  }
+  .fsm-node circle:hover { r: 34; }
+  .fsm-node text {
+    font-family: 'Inter', sans-serif;
+    font-size: 11px;
+    font-weight: 600;
+    pointer-events: none;
+    fill: #1e293b;
+  }
+
+  /* Edge lines and labels */
+  .fsm-link line, .fsm-link path {
+    stroke: #94a3b8;
+    stroke-width: 1.5;
+  }
+  .fsm-link-label {
+    font-family: 'Inter', sans-serif;
+    font-size: 9px;
+    fill: #64748b;
+  }
+
+  /* Tooltip */
+  #fsm-tooltip {
+    position: absolute;
+    background: rgba(15,23,42,0.9);
+    color: white;
+    padding: 8px 12px;
+    border-radius: 8px;
+    font-size: 12px;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.2s;
+    max-width: 200px;
+    z-index: 50;
+  }
+
+  /* DFA table */
+  #dfa-table th { background: #f1f5f9; }
+  #dfa-table td, #dfa-table th { padding: 6px 10px; border: 1px solid #e2e8f0; font-size: 12px; }
+</style>
+{% endblock %}
+
+{% block content %}
+
+<div class="mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+  <div>
+    <h1 class="text-2xl font-bold text-gray-900">FSM Diagram</h1>
+    <p class="text-gray-500 text-sm mt-1">Formal finite-state machine governing student exam lifecycle.</p>
+  </div>
+  <a href="javascript:history.back()"
+    class="inline-flex items-center gap-2 text-sm text-indigo-600 hover:text-indigo-800 font-medium transition">
+    ← Back
+  </a>
+</div>
+
+<div class="grid grid-cols-1 xl:grid-cols-4 gap-6">
+
+  <!-- ── D3 Graph Canvas ──────────────────────────────────────────── -->
+  <div class="xl:col-span-3 bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden" style="min-height: 600px; position: relative;">
+    <svg id="fsm-svg"></svg>
+    <div id="fsm-tooltip"></div>
+
+    <!-- Legend -->
+    <div class="absolute bottom-4 left-4 bg-white/90 backdrop-blur rounded-xl border border-gray-200 shadow p-3 flex flex-col gap-1.5 text-xs">
+      <div class="font-semibold text-gray-600 mb-1">Legend</div>
+      <div class="flex items-center gap-2"><span class="inline-block w-4 h-4 rounded-full border-4 border-indigo-500 bg-indigo-100"></span> Initial state</div>
+      <div class="flex items-center gap-2"><span class="inline-block w-4 h-4 rounded-full bg-green-400"></span> Exit (success)</div>
+      <div class="flex items-center gap-2"><span class="inline-block w-4 h-4 rounded-full bg-red-400"></span> Exit (cancelled/absent)</div>
+      <div class="flex items-center gap-2"><span class="inline-block w-4 h-4 rounded-full bg-slate-300"></span> Intermediate</div>
+    </div>
+  </div>
+
+  <!-- ── DFA Formal Definition Sidebar ──────────────────────────── -->
+  <div class="space-y-5 overflow-y-auto">
+
+    <!-- Q: States -->
+    <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
+      <h3 class="font-semibold text-gray-700 text-sm mb-3">Q — States</h3>
+      <div class="flex flex-wrap gap-1.5 text-xs font-mono">
+        {% for state in ['Registered','FeePaid','HallTicketIssued','ExamTaken','Evaluated','UnderReview','ResultPublished','Cancelled','Absent'] %}
+        <span class="px-2 py-0.5 rounded bg-slate-100 text-slate-700 border border-slate-200">{{ state }}</span>
+        {% endfor %}
+      </div>
+    </div>
+
+    <!-- Σ: Alphabet -->
+    <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
+      <h3 class="font-semibold text-gray-700 text-sm mb-3">Σ — Input Alphabet</h3>
+      <div class="flex flex-wrap gap-1.5 text-xs font-mono">
+        {% for ev in ['register','pay_fee','refund','issue_hall_ticket','take_exam','mark_absent','submit_evaluation','flag_discrepancy','confirm_result','publish_result','revert','cancel','request_review'] %}
+        <span class="px-2 py-0.5 rounded bg-indigo-50 text-indigo-700 border border-indigo-100">{{ ev }}</span>
+        {% endfor %}
+      </div>
+    </div>
+
+    <!-- q0 and F -->
+    <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-5 grid grid-cols-2 gap-4">
+      <div>
+        <h3 class="font-semibold text-gray-700 text-sm mb-2">q₀ — Start</h3>
+        <span class="px-2 py-0.5 rounded bg-indigo-100 text-indigo-700 text-xs font-mono border border-indigo-200">Registered</span>
+      </div>
+      <div>
+        <h3 class="font-semibold text-gray-700 text-sm mb-2">F — Accept</h3>
+        <div class="flex flex-col gap-1">
+          <span class="px-2 py-0.5 rounded bg-green-100 text-green-700 text-xs font-mono border border-green-200">ResultPublished</span>
+          <span class="px-2 py-0.5 rounded bg-red-100 text-red-700 text-xs font-mono border border-red-200">Cancelled</span>
+          <span class="px-2 py-0.5 rounded bg-gray-100 text-gray-600 text-xs font-mono border border-gray-200">Absent</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- δ: Transition table -->
+    <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
+      <h3 class="font-semibold text-gray-700 text-sm mb-3">δ — Transition Function</h3>
+      <div class="overflow-x-auto">
+        <table class="text-xs w-full" id="dfa-table">
+          <thead>
+            <tr>
+              <th class="text-left">State</th>
+              <th class="text-left">Event</th>
+              <th class="text-left">Next State</th>
+            </tr>
+          </thead>
+          <tbody id="dfa-tbody">
+            <tr><td colspan="3" class="text-gray-400 italic text-center py-2">Loading…</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+/* ──────────────────────────────────────────────────────────────────────
+   FSM Visualizer — D3.js force-directed graph
+──────────────────────────────────────────────────────────────────────── */
+
+const STATE_COLORS = {
+  Registered       : { fill: '#e0e7ff', stroke: '#6366f1' },  // indigo (initial)
+  FeePaid          : { fill: '#dbeafe', stroke: '#3b82f6' },
+  HallTicketIssued : { fill: '#fef9c3', stroke: '#eab308' },
+  ExamTaken        : { fill: '#ffedd5', stroke: '#f97316' },
+  Evaluated        : { fill: '#f3e8ff', stroke: '#a855f7' },
+  UnderReview      : { fill: '#fee2e2', stroke: '#ef4444' },
+  ResultPublished  : { fill: '#dcfce7', stroke: '#22c55e' },
+  Cancelled        : { fill: '#fecaca', stroke: '#dc2626' },
+  Absent           : { fill: '#e5e7eb', stroke: '#6b7280' },
+};
+
+const EXIT_STATES  = new Set(['ResultPublished', 'Cancelled', 'Absent']);
+const INIT_STATE   = 'Registered';
+
+// Fetch FSM data from API
+fetch('/api/fsm')
+  .then(r => r.json())
+  .then(data => renderFSM(data))
+  .catch(() => {
+    // Fallback hard-coded FSM for demo
+    const fallback = {
+      states: Object.keys(STATE_COLORS),
+      transitions: [
+        { from: 'Registered',       event: 'pay_fee',            to: 'FeePaid'          },
+        { from: 'Registered',       event: 'cancel',             to: 'Cancelled'        },
+        { from: 'FeePaid',          event: 'refund',             to: 'Registered'       },
+        { from: 'FeePaid',          event: 'issue_hall_ticket',  to: 'HallTicketIssued' },
+        { from: 'FeePaid',          event: 'cancel',             to: 'Cancelled'        },
+        { from: 'HallTicketIssued', event: 'take_exam',          to: 'ExamTaken'        },
+        { from: 'HallTicketIssued', event: 'mark_absent',        to: 'Absent'           },
+        { from: 'ExamTaken',        event: 'submit_evaluation',  to: 'Evaluated'        },
+        { from: 'Evaluated',        event: 'flag_discrepancy',   to: 'UnderReview'      },
+        { from: 'Evaluated',        event: 'publish_result',     to: 'ResultPublished'  },
+        { from: 'UnderReview',      event: 'confirm_result',     to: 'ResultPublished'  },
+        { from: 'UnderReview',      event: 'revert',             to: 'Evaluated'        },
+      ]
+    };
+    renderFSM(fallback);
+  });
+
+function renderFSM(data) {
+  // Populate DFA transition table
+  const tbody = document.getElementById('dfa-tbody');
+  tbody.innerHTML = data.transitions.map(t =>
+    `<tr>
+      <td class="font-mono">${t.from}</td>
+      <td class="text-indigo-600">${t.event}</td>
+      <td class="font-mono">${t.to}</td>
+    </tr>`
+  ).join('');
+
+  // Build nodes + links
+  const nodes = data.states.map(s => ({ id: s }));
+  const links = data.transitions.map(t => ({
+    source: t.from,
+    target: t.to,
+    event:  t.event
+  }));
+
+  const container = document.getElementById('fsm-svg').parentElement;
+  const W = container.clientWidth  || 800;
+  const H = container.clientHeight || 600;
+
+  const svg = d3.select('#fsm-svg')
+    .attr('viewBox', `0 0 ${W} ${H}`)
+    .attr('preserveAspectRatio', 'xMidYMid meet')
+    .call(d3.zoom().scaleExtent([0.3, 3]).on('zoom', e => g.attr('transform', e.transform)));
+
+  const g = svg.append('g');
+
+  // Arrow marker
+  svg.append('defs').append('marker')
+    .attr('id', 'arrow')
+    .attr('viewBox', '0 -5 10 10')
+    .attr('refX', 38)
+    .attr('refY', 0)
+    .attr('markerWidth', 6)
+    .attr('markerHeight', 6)
+    .attr('orient', 'auto')
+    .append('path')
+    .attr('d', 'M0,-5L10,0L0,5')
+    .attr('fill', '#94a3b8');
+
+  // Links
+  const link = g.append('g').selectAll('line')
+    .data(links).enter().append('line')
+    .attr('class', 'fsm-link')
+    .attr('stroke', '#94a3b8')
+    .attr('stroke-width', 1.5)
+    .attr('marker-end', 'url(#arrow)');
+
+  // Link labels
+  const linkLabel = g.append('g').selectAll('text')
+    .data(links).enter().append('text')
+    .attr('class', 'fsm-link-label')
+    .text(d => d.event)
+    .attr('text-anchor', 'middle')
+    .attr('dy', -4);
+
+  // Nodes
+  const nodeG = g.append('g').selectAll('.fsm-node')
+    .data(nodes).enter().append('g')
+    .attr('class', 'fsm-node')
+    .call(d3.drag()
+      .on('start', (event, d) => { if (!event.active) sim.alphaTarget(0.3).restart(); d.fx=d.x; d.fy=d.y; })
+      .on('drag',  (event, d) => { d.fx=event.x; d.fy=event.y; })
+      .on('end',   (event, d) => { if (!event.active) sim.alphaTarget(0); d.fx=null; d.fy=null; }));
+
+  const tooltip = document.getElementById('fsm-tooltip');
+
+  nodeG.append('circle')
+    .attr('r', 30)
+    .attr('fill',   d => (STATE_COLORS[d.id] || {fill:'#f1f5f9'}).fill)
+    .attr('stroke', d => (STATE_COLORS[d.id] || {stroke:'#94a3b8'}).stroke)
+    .attr('stroke-width', d => d.id === INIT_STATE ? 4 : EXIT_STATES.has(d.id) ? 3 : 2)
+    .on('mouseover', (event, d) => {
+      const outgoing = links.filter(l => l.source.id === d.id || l.source === d.id);
+      const tipText  = outgoing.length
+        ? outgoing.map(l => `<div><span style="color:#a5b4fc">${l.event}</span> → ${typeof l.target === 'object' ? l.target.id : l.target}</div>`).join('')
+        : '<div style="color:#94a3b8">No outgoing transitions</div>';
+      tooltip.innerHTML = `<div style="font-weight:600;margin-bottom:4px">${d.id}</div>${tipText}`;
+      tooltip.style.opacity = '1';
+    })
+    .on('mousemove', event => {
+      tooltip.style.left = (event.offsetX + 12) + 'px';
+      tooltip.style.top  = (event.offsetY - 10) + 'px';
+    })
+    .on('mouseleave', () => { tooltip.style.opacity = '0'; });
+
+  nodeG.append('text')
+    .text(d => d.id.replace(/([A-Z])/g, ' $1').trim())
+    .attr('text-anchor', 'middle')
+    .attr('dy', '0.35em')
+    .style('font-size', '9px')
+    .style('font-weight', '600')
+    .style('fill', '#1e293b');
+
+  // Force simulation
+  const sim = d3.forceSimulation(nodes)
+    .force('link',   d3.forceLink(links).id(d => d.id).distance(160))
+    .force('charge', d3.forceManyBody().strength(-600))
+    .force('center', d3.forceCenter(W / 2, H / 2))
+    .force('collide', d3.forceCollide(50))
+    .on('tick', () => {
+      link
+        .attr('x1', d => d.source.x)
+        .attr('y1', d => d.source.y)
+        .attr('x2', d => d.target.x)
+        .attr('y2', d => d.target.y);
+      linkLabel
+        .attr('x', d => (d.source.x + d.target.x) / 2)
+        .attr('y', d => (d.source.y + d.target.y) / 2);
+      nodeG.attr('transform', d => `translate(${d.x},${d.y})`);
+    });
+}
+</script>
+{% endblock %}
