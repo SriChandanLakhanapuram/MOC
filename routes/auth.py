@@ -14,6 +14,7 @@ Session keys set on successful login:
 """
 
 import hashlib
+import logging
 from flask import (
     Blueprint, render_template, request, session,
     redirect, url_for, flash
@@ -22,6 +23,7 @@ from db import get_db
 from werkzeug.security import check_password_hash, generate_password_hash
 
 auth_bp = Blueprint('auth', __name__)
+logger = logging.getLogger(__name__)
 
 
 # ---------------------------------------------------------------------------
@@ -122,8 +124,12 @@ def login():
                 flash(f'Welcome, {db_name}!', 'success')
                 return redirect(url_for('index'))
 
-        except Exception as exc:
-            flash(f'Database error: {exc}', 'danger')
+        except Exception:
+            logger.exception('Login failed while accessing the user database')
+            flash(
+                'The examination database could not complete sign-in. Please ask the database administrator to verify that Oracle is available and the application account is unlocked.',
+                'danger',
+            )
             return render_template('login.html')
 
     # GET

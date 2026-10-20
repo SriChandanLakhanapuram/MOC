@@ -23,20 +23,20 @@
 
   /* Edge lines and labels */
   .fsm-link line, .fsm-link path {
-    stroke: #94a3b8;
+    stroke: #789990;
     stroke-width: 1.5;
   }
   .fsm-link-label {
     font-family: 'Inter', sans-serif;
     font-size: 9px;
-    fill: #64748b;
+    fill: #55736c;
   }
 
   /* Tooltip */
   #fsm-tooltip {
     position: absolute;
-    background: rgba(15,23,42,0.9);
-    color: white;
+    background: rgba(35,59,58,0.96);
+    color: #fff9e8;
     padding: 8px 12px;
     border-radius: 8px;
     font-size: 12px;
@@ -48,8 +48,8 @@
   }
 
   /* DFA table */
-  #dfa-table th { background: #f1f5f9; }
-  #dfa-table td, #dfa-table th { padding: 6px 10px; border: 1px solid #e2e8f0; font-size: 12px; }
+  #dfa-table th { background: #d9ebe3; }
+  #dfa-table td, #dfa-table th { padding: 6px 10px; border: 1px solid #bfd3ca; font-size: 12px; }
 </style>
 {% endblock %}
 
@@ -153,15 +153,15 @@
 ──────────────────────────────────────────────────────────────────────── */
 
 const STATE_COLORS = {
-  Registered       : { fill: '#e0e7ff', stroke: '#6366f1' },  // indigo (initial)
-  FeePaid          : { fill: '#dbeafe', stroke: '#3b82f6' },
-  HallTicketIssued : { fill: '#fef9c3', stroke: '#eab308' },
-  ExamTaken        : { fill: '#ffedd5', stroke: '#f97316' },
-  Evaluated        : { fill: '#f3e8ff', stroke: '#a855f7' },
-  UnderReview      : { fill: '#fee2e2', stroke: '#ef4444' },
-  ResultPublished  : { fill: '#dcfce7', stroke: '#22c55e' },
-  Cancelled        : { fill: '#fecaca', stroke: '#dc2626' },
-  Absent           : { fill: '#e5e7eb', stroke: '#6b7280' },
+  Registered       : { fill: '#fbf0c6', stroke: '#b9972e' },
+  FeePaid          : { fill: '#d9ebe3', stroke: '#629487' },
+  HallTicketIssued : { fill: '#f5df9c', stroke: '#b9972e' },
+  ExamTaken        : { fill: '#fbe1d4', stroke: '#c46b56' },
+  Evaluated        : { fill: '#e9e2d2', stroke: '#8d8062' },
+  UnderReview      : { fill: '#f6d8ce', stroke: '#bd6654' },
+  ResultPublished  : { fill: '#e3ead1', stroke: '#768b52' },
+  Cancelled        : { fill: '#f6d8ce', stroke: '#bd6654' },
+  Absent           : { fill: '#e5efe9', stroke: '#789990' },
 };
 
 const EXIT_STATES  = new Set(['ResultPublished', 'Cancelled', 'Absent']);
@@ -234,13 +234,13 @@ function renderFSM(data) {
     .attr('orient', 'auto')
     .append('path')
     .attr('d', 'M0,-5L10,0L0,5')
-    .attr('fill', '#94a3b8');
+    .attr('fill', '#789990');
 
   // Links
   const link = g.append('g').selectAll('path')
     .data(links).enter().append('path')
     .attr('class', 'fsm-link')
-    .attr('stroke', '#94a3b8')
+    .attr('stroke', '#789990')
     .attr('stroke-width', 1.5)
     .attr('fill', 'none')
     .attr('marker-end', 'url(#arrow)');
@@ -272,8 +272,8 @@ function renderFSM(data) {
     .on('mouseover', (event, d) => {
       const outgoing = links.filter(l => l.source.id === d.id || l.source === d.id);
       const tipText  = outgoing.length
-        ? outgoing.map(l => `<div><span style="color:#a5b4fc">${l.event}</span> → ${typeof l.target === 'object' ? l.target.id : l.target}</div>`).join('')
-        : '<div style="color:#94a3b8">No outgoing transitions</div>';
+        ? outgoing.map(l => `<div><span style="color:#f1cf62">${l.event}</span> → ${typeof l.target === 'object' ? l.target.id : l.target}</div>`).join('')
+        : '<div style="color:#b9d8cc">No outgoing transitions</div>';
       tooltip.innerHTML = `<div style="font-weight:600;margin-bottom:4px">${d.id}</div>${tipText}`;
       tooltip.style.opacity = '1';
     })
@@ -289,7 +289,7 @@ function renderFSM(data) {
     .attr('dy', '0.35em')
     .style('font-size', '9px')
     .style('font-weight', '600')
-    .style('fill', '#1e293b');
+    .style('fill', '#233b3a');
 
   // Keep the lifecycle readable in left-to-right order while allowing small
   // collision adjustments when labels or links would otherwise overlap.

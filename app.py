@@ -41,12 +41,14 @@ from routes.student import student_bp
 from routes.admin import admin_bp
 from routes.faculty import faculty_bp
 from routes.examcell import examcell_bp
+from routes.hod import hod_bp
 
 app.register_blueprint(auth_bp)
 app.register_blueprint(student_bp, url_prefix='/student')
 app.register_blueprint(admin_bp,   url_prefix='/admin')
 app.register_blueprint(faculty_bp, url_prefix='/faculty')
 app.register_blueprint(examcell_bp, url_prefix='/examcell')
+app.register_blueprint(hod_bp, url_prefix='/hod')
 
 # FSM singleton
 from fsm import fsm as exam_fsm
@@ -67,7 +69,7 @@ def index():
         'Admin':    'admin.dashboard',
         'Faculty':  'faculty.dashboard',
         'ExamCell': 'examcell.dashboard',
-        'HOD':      'examcell.dashboard',
+        'HOD':      'hod.dashboard',
     }
     return redirect(url_for(role_map.get(role, 'auth.login')))
 

@@ -28,7 +28,7 @@ Event				Allowed role(s)
 pay_fee				   Student
 cancel_registration		  Student, Admin
 generate_hall_ticket		  Exam Cell
-request_refund			  Admin
+request_refund			  Exam Cell (after a student request)
 mark_attendance			  Faculty (invigilator)
 mark_absent			  Faculty
 submit_evaluation		  Faculty

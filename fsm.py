@@ -45,9 +45,9 @@ DELTA = {
 # Role-based permission map (also enforced at DB level via PERMISSIONS table)
 ROLE_PERMISSIONS = {
     'Student':   {'pay_fee', 'cancel_registration'},
-    'Admin':     {'cancel_registration', 'request_refund'},
+    'Admin':     {'cancel_registration'},
     'Faculty':   {'mark_attendance', 'mark_absent', 'submit_evaluation', 'flag_discrepancy'},
-    'ExamCell':  {'generate_hall_ticket', 'confirm_evaluation', 'revert_evaluation', 'publish_result'},
+    'ExamCell':  {'generate_hall_ticket', 'confirm_evaluation', 'revert_evaluation', 'publish_result', 'request_refund'},
     'HOD':       set(),  # retained as a read-only account role
     'SYSTEM':    {'payment_failed'},   # triggered by payment gateway callback
 }
@@ -128,7 +128,7 @@ class ExamFSM:
     # ------------------------------------------------------------------
 
     def transition(self, student_id, event, role, user_id,
-                   current_state=None, conn=None):
+                   current_state=None, conn=None, enrollment_id=None):
         """
         Execute a state transition atomically.
 
@@ -140,6 +140,7 @@ class ExamFSM:
         user_id       : int   – user_id of the actor (for audit log)
         current_state : str   – optional pre-fetched state (avoids extra DB round-trip)
         conn          : conn  – optional existing connection (caller manages commit)
+        enrollment_id : int   – optional per-exam workflow row; omitted by legacy calls
 
         Returns
         -------
@@ -153,14 +154,24 @@ class ExamFSM:
 
             # Lock and trust the row value, never a stale value from a form or
             # an earlier unlocked SELECT.
-            cur.execute(
-                "SELECT exam_status FROM students WHERE student_id = :sid FOR UPDATE",
-                sid=student_id,
-            )
-            row = cur.fetchone()
+            if enrollment_id is not None:
+                cur.execute(
+                    """SELECT student_id, exam_status FROM exam_enrollments
+                       WHERE enrollment_id = :eid FOR UPDATE""",
+                    eid=enrollment_id,
+                )
+                row = cur.fetchone()
+                if row and str(row[0]) != student_id:
+                    raise PermissionError("Enrollment does not belong to this student")
+            else:
+                cur.execute(
+                    "SELECT exam_status FROM students WHERE student_id = :sid FOR UPDATE",
+                    sid=student_id,
+                )
+                row = cur.fetchone()
             if not row:
-                raise ValueError(f"Student not found: {student_id}")
-            cs = row[0]
+                raise ValueError(f"Student/enrollment not found for {student_id}")
+            cs = row[1] if enrollment_id is not None else row[0]
 
             # 2. Validate via DFA
             ns = self.validate_transition(cs, event, role)
@@ -189,19 +200,28 @@ class ExamFSM:
                 raise PermissionError("SYSTEM is authorised only for the payment_failed callback")
 
             # 3. Persist new state
-            cur.execute(
-                "UPDATE students SET exam_status = :ns WHERE student_id = :sid",
-                ns=ns, sid=student_id
-            )
+            if enrollment_id is not None:
+                cur.execute(
+                    "UPDATE exam_enrollments SET exam_status = :ns WHERE enrollment_id = :eid",
+                    ns=ns, eid=enrollment_id,
+                )
+            else:
+                cur.execute(
+                    "UPDATE students SET exam_status = :ns WHERE student_id = :sid",
+                    ns=ns, sid=student_id,
+                )
 
             # 4. Audit log  (user_id=0 for SYSTEM events)
             # NULL is valid for the external gateway actor; zero would violate
             # the AUDIT_LOG foreign key to USERS.
             uid = user_id if user_id else None
             cur.execute(
-                """INSERT INTO audit_log (user_id, student_id, event, old_state, new_state)
-                   VALUES (:actor_user_id, :student_key, :event_key, :old_status, :new_status)""",
+                """INSERT INTO audit_log
+                   (user_id, student_id, enrollment_id, event, old_state, new_state)
+                   VALUES (:actor_user_id, :student_key, :enrollment_key,
+                           :event_key, :old_status, :new_status)""",
                 actor_user_id=uid, student_key=student_id,
+                enrollment_key=enrollment_id,
                 event_key=event, old_status=cs, new_status=ns
             )
 
