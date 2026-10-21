@@ -48,8 +48,8 @@ ROLE_PERMISSIONS = {
     'Admin':     {'cancel_registration'},
     'Faculty':   {'mark_attendance', 'mark_absent', 'submit_evaluation', 'flag_discrepancy'},
     'ExamCell':  {'generate_hall_ticket', 'confirm_evaluation', 'revert_evaluation', 'publish_result', 'request_refund'},
-    'HOD':       set(),  # retained as a read-only account role
-    'SYSTEM':    {'payment_failed'},   # triggered by payment gateway callback
+    'HOD':       set(),  
+    'SYSTEM':    {'payment_failed'},  
 }
 
 

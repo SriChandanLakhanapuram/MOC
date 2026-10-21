@@ -5,7 +5,7 @@
   <p class="text-xs font-bold uppercase tracking-[.18em] text-gray-500">Your exam desk</p>
   <h1 class="text-3xl font-bold mt-2">Welcome back, {{ current_user.name.split(' ')[0] }}.</h1>
   <p class="text-gray-600 mt-2 max-w-2xl">Choose an exam, keep an eye on each step, and find your tickets and published results in one place.</p>
-  <a class="button inline-flex mt-5 px-4 py-2 rounded-lg bg-indigo-700 text-white font-semibold" href="{{ url_for('student.exams') }}">Browse available exams <span class="ml-2">→</span></a>
+  <a class="button inline-flex mt-5 px-4 py-2 rounded-lg bg-indigo-700 text-white font-semibold" href="{{ url_for('student.exams') }}">Browse available exams <span aria-hidden="true">→</span></a>
 </section>
 <div class="grid sm:grid-cols-3 gap-4 mb-6">
   <article class="bg-white border border-gray-200 rounded-xl p-5"><p class="text-xs uppercase tracking-wider text-gray-500">My registrations</p><p class="text-3xl font-bold mt-2">{{ counts[0] or 0 }}</p></article>
@@ -13,7 +13,7 @@
   <article class="bg-white border border-gray-200 rounded-xl p-5"><p class="text-xs uppercase tracking-wider text-gray-500">Results published</p><p class="text-3xl font-bold mt-2">{{ counts[1] or 0 }}</p></article>
 </div>
 <section class="bg-white border border-gray-200 rounded-xl overflow-hidden">
-  <div class="flex items-center justify-between gap-4 px-5 py-4 border-b border-gray-200"><div><h2 class="font-bold">Upcoming and recent exams</h2><p class="text-sm text-gray-500 mt-1">The latest activity on your exam record.</p></div><a class="text-sm font-semibold text-indigo-700" href="{{ url_for('student.my_exams') }}">View all →</a></div>
+  <div class="flex items-center justify-between gap-4 px-5 py-4 border-b border-gray-200"><div><h2 class="font-bold">Upcoming and recent exams</h2><p class="text-sm text-gray-500 mt-1">The latest activity on your exam record.</p></div><a class="action-link text-sm font-semibold text-indigo-700" href="{{ url_for('student.my_exams') }}">View all <span aria-hidden="true">→</span></a></div>
   <div class="overflow-x-auto"><table class="w-full text-sm"><thead class="bg-gray-50 text-left"><tr><th class="p-3">Exam</th><th class="p-3">Course</th><th class="p-3">Date</th><th class="p-3">Status</th></tr></thead><tbody>{% for exam in recent %}<tr class="border-t border-gray-100"><td class="p-3"><strong>{{ exam.exam_name }}</strong><div class="text-xs text-gray-500">{{ exam.exam_code }}</div></td><td class="p-3">{{ exam.course_code }}</td><td class="p-3">{{ exam.exam_date.strftime('%d %b %Y') if exam.exam_date else '—' }}</td><td class="p-3"><span class="state-{{ exam.exam_status }} inline-flex rounded-full px-2.5 py-1 text-xs font-semibold">{{ exam.exam_status|replace('ResultPublished','Result published') }}</span></td></tr>{% else %}<tr><td colspan="4" class="p-8 text-center text-gray-500">No exam registrations yet. Browse the catalogue to get started.</td></tr>{% endfor %}</tbody></table></div>
 </section>
 {% endblock %}
