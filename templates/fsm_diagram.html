@@ -23,20 +23,20 @@
 
   /* Edge lines and labels */
   .fsm-link line, .fsm-link path {
-    stroke: #94a3b8;
+    stroke: #789990;
     stroke-width: 1.5;
   }
   .fsm-link-label {
     font-family: 'Inter', sans-serif;
     font-size: 9px;
-    fill: #64748b;
+    fill: #55736c;
   }
 
   /* Tooltip */
   #fsm-tooltip {
     position: absolute;
-    background: rgba(15,23,42,0.9);
-    color: white;
+    background: rgba(35,59,58,0.96);
+    color: #fff9e8;
     padding: 8px 12px;
     border-radius: 8px;
     font-size: 12px;
@@ -48,8 +48,8 @@
   }
 
   /* DFA table */
-  #dfa-table th { background: #f1f5f9; }
-  #dfa-table td, #dfa-table th { padding: 6px 10px; border: 1px solid #e2e8f0; font-size: 12px; }
+  #dfa-table th { background: #d9ebe3; }
+  #dfa-table td, #dfa-table th { padding: 6px 10px; border: 1px solid #bfd3ca; font-size: 12px; }
 </style>
 {% endblock %}
 
@@ -74,7 +74,7 @@
     <div id="fsm-tooltip"></div>
 
     <!-- Legend -->
-    <div class="absolute bottom-4 left-4 bg-white/90 backdrop-blur rounded-xl border border-gray-200 shadow p-3 flex flex-col gap-1.5 text-xs">
+    <div class="absolute bottom-4 right-4 bg-white/90 backdrop-blur rounded-xl border border-gray-200 shadow p-3 flex flex-col gap-1.5 text-xs">
       <div class="font-semibold text-gray-600 mb-1">Legend</div>
       <div class="flex items-center gap-2"><span class="inline-block w-4 h-4 rounded-full border-4 border-indigo-500 bg-indigo-100"></span> Initial state</div>
       <div class="flex items-center gap-2"><span class="inline-block w-4 h-4 rounded-full bg-green-400"></span> Exit (success)</div>
@@ -100,7 +100,7 @@
     <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
       <h3 class="font-semibold text-gray-700 text-sm mb-3">Σ — Input Alphabet</h3>
       <div class="flex flex-wrap gap-1.5 text-xs font-mono">
-        {% for ev in ['register','pay_fee','refund','issue_hall_ticket','take_exam','mark_absent','submit_evaluation','flag_discrepancy','confirm_result','publish_result','revert','cancel','request_review'] %}
+        {% for ev in fsm_model.alphabet | sort %}
         <span class="px-2 py-0.5 rounded bg-indigo-50 text-indigo-700 border border-indigo-100">{{ ev }}</span>
         {% endfor %}
       </div>
@@ -153,15 +153,15 @@
 ──────────────────────────────────────────────────────────────────────── */
 
 const STATE_COLORS = {
-  Registered       : { fill: '#e0e7ff', stroke: '#6366f1' },  // indigo (initial)
-  FeePaid          : { fill: '#dbeafe', stroke: '#3b82f6' },
-  HallTicketIssued : { fill: '#fef9c3', stroke: '#eab308' },
-  ExamTaken        : { fill: '#ffedd5', stroke: '#f97316' },
-  Evaluated        : { fill: '#f3e8ff', stroke: '#a855f7' },
-  UnderReview      : { fill: '#fee2e2', stroke: '#ef4444' },
-  ResultPublished  : { fill: '#dcfce7', stroke: '#22c55e' },
-  Cancelled        : { fill: '#fecaca', stroke: '#dc2626' },
-  Absent           : { fill: '#e5e7eb', stroke: '#6b7280' },
+  Registered       : { fill: '#fbf0c6', stroke: '#b9972e' },
+  FeePaid          : { fill: '#d9ebe3', stroke: '#629487' },
+  HallTicketIssued : { fill: '#f5df9c', stroke: '#b9972e' },
+  ExamTaken        : { fill: '#fbe1d4', stroke: '#c46b56' },
+  Evaluated        : { fill: '#e9e2d2', stroke: '#8d8062' },
+  UnderReview      : { fill: '#f6d8ce', stroke: '#bd6654' },
+  ResultPublished  : { fill: '#e3ead1', stroke: '#768b52' },
+  Cancelled        : { fill: '#f6d8ce', stroke: '#bd6654' },
+  Absent           : { fill: '#e5efe9', stroke: '#789990' },
 };
 
 const EXIT_STATES  = new Set(['ResultPublished', 'Cancelled', 'Absent']);
@@ -177,17 +177,17 @@ fetch('/api/fsm')
       states: Object.keys(STATE_COLORS),
       transitions: [
         { from: 'Registered',       event: 'pay_fee',            to: 'FeePaid'          },
-        { from: 'Registered',       event: 'cancel',             to: 'Cancelled'        },
-        { from: 'FeePaid',          event: 'refund',             to: 'Registered'       },
-        { from: 'FeePaid',          event: 'issue_hall_ticket',  to: 'HallTicketIssued' },
-        { from: 'FeePaid',          event: 'cancel',             to: 'Cancelled'        },
-        { from: 'HallTicketIssued', event: 'take_exam',          to: 'ExamTaken'        },
+        { from: 'Registered',       event: 'payment_failed',     to: 'Registered'      },
+        { from: 'Registered',       event: 'cancel_registration',to: 'Cancelled'        },
+        { from: 'FeePaid',          event: 'request_refund',     to: 'Registered'       },
+        { from: 'FeePaid',          event: 'generate_hall_ticket',to: 'HallTicketIssued'},
+        { from: 'HallTicketIssued', event: 'mark_attendance',    to: 'ExamTaken'        },
         { from: 'HallTicketIssued', event: 'mark_absent',        to: 'Absent'           },
         { from: 'ExamTaken',        event: 'submit_evaluation',  to: 'Evaluated'        },
         { from: 'Evaluated',        event: 'flag_discrepancy',   to: 'UnderReview'      },
         { from: 'Evaluated',        event: 'publish_result',     to: 'ResultPublished'  },
-        { from: 'UnderReview',      event: 'confirm_result',     to: 'ResultPublished'  },
-        { from: 'UnderReview',      event: 'revert',             to: 'Evaluated'        },
+        { from: 'UnderReview',      event: 'revert_evaluation',  to: 'ExamTaken'        },
+        { from: 'UnderReview',      event: 'confirm_evaluation', to: 'Evaluated'        },
       ]
     };
     renderFSM(fallback);
@@ -234,14 +234,15 @@ function renderFSM(data) {
     .attr('orient', 'auto')
     .append('path')
     .attr('d', 'M0,-5L10,0L0,5')
-    .attr('fill', '#94a3b8');
+    .attr('fill', '#789990');
 
   // Links
-  const link = g.append('g').selectAll('line')
-    .data(links).enter().append('line')
+  const link = g.append('g').selectAll('path')
+    .data(links).enter().append('path')
     .attr('class', 'fsm-link')
-    .attr('stroke', '#94a3b8')
+    .attr('stroke', '#789990')
     .attr('stroke-width', 1.5)
+    .attr('fill', 'none')
     .attr('marker-end', 'url(#arrow)');
 
   // Link labels
@@ -271,8 +272,8 @@ function renderFSM(data) {
     .on('mouseover', (event, d) => {
       const outgoing = links.filter(l => l.source.id === d.id || l.source === d.id);
       const tipText  = outgoing.length
-        ? outgoing.map(l => `<div><span style="color:#a5b4fc">${l.event}</span> → ${typeof l.target === 'object' ? l.target.id : l.target}</div>`).join('')
-        : '<div style="color:#94a3b8">No outgoing transitions</div>';
+        ? outgoing.map(l => `<div><span style="color:#f1cf62">${l.event}</span> → ${typeof l.target === 'object' ? l.target.id : l.target}</div>`).join('')
+        : '<div style="color:#b9d8cc">No outgoing transitions</div>';
       tooltip.innerHTML = `<div style="font-weight:600;margin-bottom:4px">${d.id}</div>${tipText}`;
       tooltip.style.opacity = '1';
     })
@@ -288,23 +289,45 @@ function renderFSM(data) {
     .attr('dy', '0.35em')
     .style('font-size', '9px')
     .style('font-weight', '600')
-    .style('fill', '#1e293b');
+    .style('fill', '#233b3a');
 
-  // Force simulation
+  // Keep the lifecycle readable in left-to-right order while allowing small
+  // collision adjustments when labels or links would otherwise overlap.
+  const anchors = {
+    Registered: [0.12, 0.76], FeePaid: [0.33, 0.76],
+    HallTicketIssued: [0.54, 0.76], ExamTaken: [0.75, 0.76],
+    Evaluated: [0.82, 0.46], UnderReview: [0.57, 0.34],
+    ResultPublished: [0.84, 0.14], Cancelled: [0.12, 0.14], Absent: [0.50, 0.14]
+  };
+  function edgeGeometry(edge) {
+    const sid = typeof edge.source === 'object' ? edge.source.id : edge.source;
+    const tid = typeof edge.target === 'object' ? edge.target.id : edge.target;
+    const pair = links.filter(l => {
+      const a = typeof l.source === 'object' ? l.source.id : l.source;
+      const b = typeof l.target === 'object' ? l.target.id : l.target;
+      return (a === sid && b === tid) || (a === tid && b === sid);
+    });
+    const lane = (pair.indexOf(edge) - (pair.length - 1) / 2) * 44 * (sid < tid ? 1 : -1);
+    const s = edge.source, t = edge.target;
+    const dx = t.x - s.x, dy = t.y - s.y, length = Math.max(1, Math.hypot(dx, dy));
+    if (length < 2) return { path: `M${s.x-22},${s.y-28} C${s.x-65},${s.y-90} ${s.x+65},${s.y-90} ${s.x+22},${s.y-28}`, x:s.x, y:s.y-82 };
+    const ux = dx / length, uy = dy / length, nx = -uy, ny = ux;
+    const sx = s.x + ux * 36, sy = s.y + uy * 36, ex = t.x - ux * 38, ey = t.y - uy * 38;
+    const cx = (sx + ex) / 2 + nx * lane, cy = (sy + ey) / 2 + ny * lane;
+    return { path: `M${sx},${sy} Q${cx},${cy} ${ex},${ey}`,
+      x: 0.25*sx + 0.5*cx + 0.25*ex, y: 0.25*sy + 0.5*cy + 0.25*ey - 7 };
+  }
   const sim = d3.forceSimulation(nodes)
-    .force('link',   d3.forceLink(links).id(d => d.id).distance(160))
-    .force('charge', d3.forceManyBody().strength(-600))
+    .force('link',   d3.forceLink(links).id(d => d.id).distance(120).strength(0.18))
+    .force('charge', d3.forceManyBody().strength(-100))
+    .force('x', d3.forceX(d => (anchors[d.id] || [0.5,0.5])[0] * W).strength(0.85))
+    .force('y', d3.forceY(d => (anchors[d.id] || [0.5,0.5])[1] * H).strength(0.85))
     .force('center', d3.forceCenter(W / 2, H / 2))
     .force('collide', d3.forceCollide(50))
     .on('tick', () => {
-      link
-        .attr('x1', d => d.source.x)
-        .attr('y1', d => d.source.y)
-        .attr('x2', d => d.target.x)
-        .attr('y2', d => d.target.y);
-      linkLabel
-        .attr('x', d => (d.source.x + d.target.x) / 2)
-        .attr('y', d => (d.source.y + d.target.y) / 2);
+      nodes.forEach(d => { d.x = Math.max(48, Math.min(W - 48, d.x)); d.y = Math.max(48, Math.min(H - 48, d.y)); });
+      link.attr('d', d => edgeGeometry(d).path);
+      linkLabel.attr('x', d => edgeGeometry(d).x).attr('y', d => edgeGeometry(d).y);
       nodeG.attr('transform', d => `translate(${d.x},${d.y})`);
     });
 }

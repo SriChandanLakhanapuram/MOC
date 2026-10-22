@@ -3,118 +3,63 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Login | ExamFlow</title>
-  <script src="https://cdn.tailwindcss.com"></script>
+  <title>Sign in | ExamFlow</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
-  <style>body { font-family: 'Inter', sans-serif; }</style>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@500;600;700;800&display=swap" rel="stylesheet" />
+  <style>
+    :root { --ink:#233b3a; --muted:#607573; --paper:#fbf5df; --mint:#d9ebe3; --line:#bfd3ca; --coral:#e8846d; --sun:#f1cf62; --deep:#254746; }
+    * { box-sizing:border-box; }
+    body { margin:0; min-height:100vh; display:grid; place-items:center; padding:24px; color:var(--ink); font-family:'DM Sans',sans-serif; background:#edf4ed; background-image:radial-gradient(#c4d8ce 1px,transparent 1px); background-size:18px 18px; }
+    .shell { width:min(100%,450px); }
+    .brand-note { display:flex; align-items:center; justify-content:center; gap:9px; margin-bottom:17px; color:var(--deep); font:800 14px Manrope,sans-serif; letter-spacing:.15em; text-transform:uppercase; }
+    .brand-mark { display:grid; place-items:center; width:30px;height:30px;border-radius:10px;background:var(--sun);font-size:16px;letter-spacing:0; }
+    .login-card { overflow:hidden; border:1px solid #c5d9cf; border-radius:22px; background:var(--paper); box-shadow:0 16px 36px #29493c20; }
+    .hero { padding:30px 32px 27px; background:var(--mint); background-image:radial-gradient(#a7c9bb 1px,transparent 1px);background-size:13px 13px;text-align:center;border-bottom:1px solid var(--line); }
+    .hero-icon { display:grid;place-items:center;width:58px;height:58px;margin:0 auto 13px;border:2px solid var(--deep);border-radius:18px;background:var(--sun);font-size:28px;transform:rotate(-4deg);box-shadow:3px 4px 0 var(--deep); }
+    h1 { margin:0;color:var(--deep);font:800 27px Manrope,sans-serif;letter-spacing:-.04em; }
+    .hero p { margin:6px 0 0;color:#4e6b65;font-size:14px; }
+    .form-area { padding:29px 34px 30px; }
+    h2 { margin:0 0 22px;text-align:center;font:700 17px Manrope,sans-serif; }
+    label { display:block;margin:0 0 7px;font-size:13px;font-weight:700; }
+    input { width:100%;height:46px;padding:0 13px;border:1px solid var(--line);border-radius:10px;background:#fffdf5;color:var(--ink);font:inherit;font-size:14px;outline:none; }
+    input:focus { border-color:#679587;box-shadow:0 0 0 3px #bad8cc80; }
+    .field { margin-bottom:17px; }
+    .password-wrap { position:relative; }
+    .password-wrap input { padding-right:48px; }
+    .reveal { position:absolute;top:0;right:0;width:45px;height:46px;border:0;background:transparent;color:var(--muted);cursor:pointer; }
+    .submit { width:100%;height:47px;margin-top:5px;border:0;border-radius:10px;background:var(--coral);box-shadow:0 4px 0 #bd6654;color:#2c3e38;font:700 15px Manrope,sans-serif;cursor:pointer;transition:transform .16s ease,box-shadow .16s ease,filter .16s ease; }
+    .submit:hover { transform:translateY(-2px);filter:brightness(1.03);box-shadow:0 6px 0 #bd6654,0 12px 22px #25474630; }
+    .submit:active { transform:translateY(0);box-shadow:0 2px 0 #bd6654; }
+    .help { margin:21px 0 0;text-align:center;color:var(--muted);font-size:12px;line-height:1.6; }
+    .foot { margin:17px 0 0;text-align:center;color:#668078;font-size:11px; }
+    .flash-list { margin-bottom:14px; }
+    .flash { padding:11px 13px;border:1px solid var(--line);border-radius:10px;background:var(--paper);font-size:13px; }
+    .flash.error,.flash.danger { border-color:#e5a092;background:#fae5dd;color:#794236; }
+    .flash.success { border-color:#bfd3a0;background:#e9efd8;color:#52633d; }
+    .flash.warning { border-color:#e3ce86;background:#fbf0c6;color:#725d21; }
+    @media(max-width:480px) { body { padding:16px; }.hero { padding:25px 20px 23px; }.form-area { padding:25px 22px; } }
+  </style>
 </head>
-<body class="bg-gradient-to-br from-indigo-50 via-white to-blue-50 min-h-screen flex items-center justify-center p-4">
-
-  <div class="w-full max-w-md">
-
-    <!-- Flash Messages -->
+<body>
+  <div class="shell">
+    <div class="brand-note"><span class="brand-mark" aria-hidden="true">✳</span> University examination system</div>
     {% with messages = get_flashed_messages(with_categories=true) %}
-      {% if messages %}
-        <div class="mb-4 space-y-2">
-          {% for category, message in messages %}
-            {% if category in ['error', 'danger'] %}
-              <div class="bg-red-50 border border-red-300 text-red-700 px-4 py-3 rounded-lg text-sm flex items-center gap-2">
-                <span>✖</span><span>{{ message }}</span>
-              </div>
-            {% elif category == 'success' %}
-              <div class="bg-green-50 border border-green-300 text-green-700 px-4 py-3 rounded-lg text-sm flex items-center gap-2">
-                <span>✔</span><span>{{ message }}</span>
-              </div>
-            {% else %}
-              <div class="bg-blue-50 border border-blue-300 text-blue-700 px-4 py-3 rounded-lg text-sm flex items-center gap-2">
-                <span>ℹ</span><span>{{ message }}</span>
-              </div>
-            {% endif %}
-          {% endfor %}
-        </div>
-      {% endif %}
+      {% if messages %}<div class="flash-list" role="alert">{% for category, message in messages %}<div class="flash {{ category }}">{{ message }}</div>{% endfor %}</div>{% endif %}
     {% endwith %}
-
-    <!-- Card -->
-    <div class="bg-white rounded-2xl shadow-xl overflow-hidden">
-
-      <!-- Card Header -->
-      <div class="bg-indigo-700 px-8 py-10 text-center">
-        <div class="text-6xl mb-3">🎓</div>
-        <h1 class="text-white text-2xl font-bold tracking-tight">ExamFlow</h1>
-        <p class="text-indigo-200 text-sm mt-1">Examination Management Portal</p>
-      </div>
-
-      <!-- Card Body -->
-      <div class="px-8 py-8">
-        <h2 class="text-gray-800 text-lg font-semibold mb-6 text-center">Sign in to your account</h2>
-
-        <form method="post" action="/login" novalidate>
-          <!-- CSRF token if using Flask-WTF -->
-          {% if csrf_token is defined %}
-            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
-          {% endif %}
-
-          <!-- Email -->
-          <div class="mb-4">
-            <label for="email" class="block text-sm font-medium text-gray-700 mb-1">Email address</label>
-            <input
-              type="email"
-              id="email"
-              name="email"
-              required
-              autocomplete="email"
-              placeholder="you@university.edu"
-              class="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition"
-            />
-          </div>
-
-          <!-- Password -->
-          <div class="mb-6">
-            <label for="password" class="block text-sm font-medium text-gray-700 mb-1">Password</label>
-            <div class="relative">
-              <input
-                type="password"
-                id="password"
-                name="password"
-                required
-                autocomplete="current-password"
-                placeholder="••••••••"
-                class="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition"
-              />
-              <button type="button" onclick="togglePassword()"
-                class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 text-xs select-none">
-                👁
-              </button>
-            </div>
-          </div>
-
-          <!-- Submit -->
-          <button
-            type="submit"
-            class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2.5 rounded-lg shadow transition focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2">
-            Sign In
-          </button>
+    <section class="login-card" aria-labelledby="welcome-title">
+      <header class="hero"><div class="hero-icon" aria-hidden="true">✎</div><h1 id="welcome-title">ExamFlow</h1><p>One clear path through every exam cycle.</p></header>
+      <div class="form-area"><h2>Welcome back</h2>
+        <form method="post" action="/login">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+          <div class="field"><label for="email">University email</label><input type="email" id="email" name="email" required autocomplete="username" placeholder="you@university.edu" /></div>
+          <div class="field"><label for="password">Password</label><div class="password-wrap"><input type="password" id="password" name="password" required autocomplete="current-password" placeholder="Enter your password" /><button class="reveal" type="button" onclick="togglePassword()" aria-label="Show password">◉</button></div></div>
+          <button type="submit" class="submit">Sign in <span aria-hidden="true">→</span></button>
         </form>
-
-        <p class="text-center text-gray-400 text-xs mt-6">
-          Having trouble? Contact your examination cell administrator.
-        </p>
+        <p class="help">Having trouble signing in?<br />Contact your examination cell administrator.</p>
       </div>
-    </div>
-
-    <!-- Footer note -->
-    <p class="text-center text-gray-400 text-xs mt-6">
-      University Examination Management System &nbsp;|&nbsp; Powered by Formal State Machines
-    </p>
+    </section>
+    <p class="foot">ExamFlow · University Examination Management</p>
   </div>
-
-  <script>
-    function togglePassword() {
-      const p = document.getElementById('password');
-      p.type = p.type === 'password' ? 'text' : 'password';
-    }
-  </script>
+  <script>function togglePassword(){const p=document.getElementById('password');const visible=p.type==='password';p.type=visible?'text':'password';document.querySelector('.reveal').setAttribute('aria-label',visible?'Hide password':'Show password');}</script>
 </body>
 </html>

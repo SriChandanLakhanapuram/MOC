@@ -1,0 +1,1 @@
+{% extends "base.html" %}{% block title %}{{ title }}{% endblock %}{% block content %}<a href="{{ url_for('papers') }}" class="text-indigo-700">← All documentation</a><article class="prose max-w-none bg-white border rounded-xl p-6 mt-4">{{ content | safe }}</article>{% endblock %}

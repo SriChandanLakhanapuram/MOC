@@ -4,165 +4,77 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>{% block title %}ExamFlow{% endblock %} | University Examination Management System</title>
-
-  <!-- Tailwind CSS CDN -->
-  <script src="https://cdn.tailwindcss.com"></script>
-  <script>
-    tailwind.config = {
-      theme: {
-        extend: {
-          colors: {
-            primary: { DEFAULT: '#4f46e5', dark: '#3730a3', light: '#818cf8' }
-          }
-        }
-      }
-    };
-  </script>
-
-  <!-- Chart.js CDN -->
+  <script src="{{ url_for('static', filename='tailwind.js') }}"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
-
-  <!-- D3.js CDN (for FSM visualizer) -->
   <script src="https://cdn.jsdelivr.net/npm/d3@7.8.5/dist/d3.min.js"></script>
-
-  <!-- Inter font -->
   <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
-
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@500;600;700;800&display=swap" rel="stylesheet" />
   <style>
-    body { font-family: 'Inter', sans-serif; }
-    .state-Registered      { @apply bg-gray-100 text-gray-700; }
-    .state-FeePaid         { @apply bg-blue-100 text-blue-700; }
-    .state-HallTicketIssued{ @apply bg-yellow-100 text-yellow-700; }
-    .state-ExamTaken       { @apply bg-orange-100 text-orange-700; }
-    .state-Evaluated       { @apply bg-purple-100 text-purple-700; }
-    .state-UnderReview     { @apply bg-red-100 text-red-700; }
-    .state-ResultPublished { @apply bg-green-100 text-green-700; }
-    .state-Cancelled       { @apply bg-red-200 text-red-800; }
-    .state-Absent          { @apply bg-gray-200 text-gray-600; }
+    :root{--ink:#233b3a;--muted:#607573;--paper:#fbf5df;--mint:#d9ebe3;--line:#bfd3ca;--coral:#e8846d;--sun:#f1cf62;--forest:#285345;--forest-deep:#1f4338;--forest-light:#3c705e}
+    *{box-sizing:border-box} body{margin:0;font-family:'DM Sans',sans-serif;color:var(--ink);background:#edf4ed;background-image:radial-gradient(#c4d8ce 1px,transparent 1px);background-size:18px 18px}
+    .app-sidebar{position:fixed;z-index:40;inset:0 auto 0 0;width:250px;display:flex;flex-direction:column;padding:22px 15px 16px;background:var(--forest);color:#f5f2db;box-shadow:8px 0 24px #1e443418}
+    .brand{display:flex;align-items:center;gap:11px;padding:3px 11px 22px;color:#fff9e8;text-decoration:none;font:800 20px Manrope,sans-serif;letter-spacing:-.04em}
+    .brand-mark{display:grid;place-items:center;width:36px;height:36px;border-radius:12px;background:var(--sun);color:var(--forest-deep);font-size:19px;box-shadow:0 3px 0 #d1ae45}
+    .sidebar-caption{padding:13px 12px 7px;color:#b9d8cc;font-size:10px;font-weight:700;letter-spacing:.15em;text-transform:uppercase}
+    .sidebar-nav{display:flex;flex-direction:column;gap:4px}.nav-link{display:flex;align-items:center;gap:12px;min-height:43px;padding:9px 12px;border:1px solid transparent;border-radius:11px;color:#e0eee4;text-decoration:none;font-size:13px;font-weight:600;transition:transform .16s ease,box-shadow .16s ease,background .16s ease,color .16s ease}
+    .nav-icon{display:grid;place-items:center;width:22px;height:22px;font-size:16px;opacity:.95}.nav-link:hover{transform:translateX(3px);background:#ffffff18;box-shadow:0 7px 16px #16392d55;color:#fff;}
+    .nav-link.active{background:#d9ebe3;color:#204b3c;box-shadow:0 4px 0 #1e4538,0 9px 18px #183a2f38}.sidebar-bottom{margin-top:auto;border-top:1px solid #ffffff27;padding:15px 11px 0;color:#c6dbd0;font-size:11px;line-height:1.5}
+    .app-main{min-height:100vh;margin-left:250px;display:flex;flex-direction:column}.topbar{height:67px;display:flex;align-items:center;justify-content:space-between;gap:16px;padding:0 clamp(18px,4vw,48px);border-bottom:1px solid #bfd3ca;background:#edf4edeb;backdrop-filter:blur(12px)}
+    .user-area{display:flex;align-items:center;gap:11px}.user-name{font-size:13px;font-weight:700}.role-pill{padding:5px 10px;border-radius:999px;background:#d9ebe3;color:#285345;font-size:10px;font-weight:800;letter-spacing:.06em;text-transform:uppercase}
+    .logout{padding:8px 12px;border:1px solid #9cbcaf;border-radius:9px;background:#fbf5df;color:#285345;font-size:12px;font-weight:700;cursor:pointer;transition:transform .16s ease,box-shadow .16s ease,background .16s ease}.logout:hover{transform:translateY(-2px);background:#fff9e8;box-shadow:0 6px 0 #b9d8cc,0 10px 18px #244d3c30}
+    .content-wrap{width:100%;max-width:1500px;margin:0 auto;padding:30px clamp(18px,4vw,48px) 48px;flex:1}.site-footer{display:flex;justify-content:space-between;gap:12px;padding:16px clamp(18px,4vw,48px);border-top:1px solid var(--line);color:#668078;font-size:11px}
+    .menu-toggle{display:none;border:1px solid var(--line);border-radius:9px;background:var(--paper);padding:8px 10px;color:var(--ink);font-weight:700}.sidebar-scrim{display:none}
+    .bg-white{background-color:var(--paper)!important}.bg-gray-50{background-color:#e5efe9!important}.bg-gray-100,.bg-slate-100{background-color:var(--mint)!important}.bg-indigo-700,.bg-indigo-600{background-color:var(--forest)!important}.bg-indigo-500,.bg-indigo-400{background-color:var(--forest-light)!important}.bg-indigo-100,.bg-indigo-50{background-color:#dce9d6!important}.bg-blue-50,.bg-blue-100,.bg-sky-100,.bg-emerald-100{background-color:var(--mint)!important}.bg-green-50,.bg-green-100{background-color:#e3ead1!important}.bg-yellow-50,.bg-yellow-100,.bg-amber-50,.bg-amber-100{background-color:#fbf0c6!important}.bg-orange-50,.bg-orange-100{background-color:#fbe1d4!important}.bg-purple-50,.bg-purple-100{background-color:#e9e2d2!important}.bg-red-50,.bg-red-100{background-color:#f6d8ce!important}.bg-red-200{background-color:#efc6b9!important}
+    .text-gray-900,.text-gray-800,.text-gray-700,.text-slate-700{color:var(--ink)!important}.text-gray-600,.text-gray-500,.text-gray-400{color:var(--muted)!important}.text-indigo-800,.text-indigo-700,.text-indigo-600,.text-indigo-500,.text-blue-800,.text-blue-700,.text-blue-600{color:#35645d!important}.text-green-800,.text-green-700,.text-green-600{color:#556c3c!important}.text-red-900,.text-red-800,.text-red-700,.text-red-600,.text-red-500,.text-rose-700{color:#9c5545!important}.text-amber-800,.text-amber-700,.text-yellow-800,.text-yellow-700{color:#806a2d!important}
+    .border-gray-100,.border-gray-200,.border-gray-300,.border-slate-200{border-color:var(--line)!important}.border-red-100,.border-red-200,.border-red-300,.border-amber-200{border-color:#e2b4a5!important}
+    input,select,textarea{background:#fffdf5!important;color:var(--ink)!important;border-color:var(--line)!important;border-radius:10px!important}input:focus,select:focus,textarea:focus{--tw-ring-color:#75a598!important;border-color:#75a598!important}.focus\\:ring-indigo-500:focus{--tw-ring-color:#75a598!important}
+    button,a{transition:transform .16s ease,box-shadow .16s ease,background-color .16s ease}.rounded-xl,.rounded-2xl{border-radius:16px!important}.shadow-sm,.shadow,.shadow-lg{box-shadow:0 5px 16px #34584a12!important}
+    .content-wrap a:not(.nav-link){color:#285345;text-decoration:none;border-radius:8px;transition:transform .16s ease,box-shadow .16s ease,background-color .16s ease,color .16s ease}.content-wrap a:not(.button):hover{color:#1f4338;background:#d9ebe3;box-shadow:0 3px 0 #b9d8cc,0 6px 12px #244d3c18}.content-wrap a.button,.content-wrap a.action-link{display:inline-flex;align-items:center;justify-content:center;gap:8px;text-decoration:none;font-weight:700}.content-wrap a.button{min-height:42px;padding:10px 17px;border:1px solid #1f4338;border-radius:10px;background:var(--forest);color:#fff9e8;box-shadow:0 3px 0 #1b3d33,0 6px 12px #244d3c20}.content-wrap a.button:hover{transform:translateY(-2px);background:var(--forest-light);box-shadow:0 5px 0 #1b3d33,0 10px 18px #244d3c30}.content-wrap a.action-link{padding:7px 10px;border:1px solid transparent}.content-wrap a.action-link:hover{border-color:var(--line)}button:hover{transform:translateY(-2px);box-shadow:0 5px 0 #b9d8cc,0 9px 16px #244d3c26!important}button:active,a.button:active{transform:translateY(0)}button:focus-visible,a:focus-visible{outline:3px solid #d4ae43;outline-offset:3px}tbody tr:hover{background:#f3edda}
+    .state-Registered{background:#e5efe9;color:#45615a}.state-FeePaid{background:#d9ebe3;color:#35645d}.state-HallTicketIssued{background:#fbf0c6;color:#725d21}.state-ExamTaken{background:#fbe1d4;color:#8b4f3e}.state-Evaluated{background:#e9e2d2;color:#625b45}.state-UnderReview{background:#f6d8ce;color:#8b483b}.state-ResultPublished{background:#e3ead1;color:#556c3c}.state-Cancelled{background:#f6d8ce;color:#8b483b}.state-Absent{background:#e5efe9;color:#607573}
+    .flash-msg{animation:enter .2s ease-out}@keyframes enter{from{transform:translateY(-4px);opacity:0}to{transform:translateY(0);opacity:1}}
+    @media(max-width:760px){.app-sidebar{width:78px;padding:18px 10px}.brand{justify-content:center;padding:3px 0 22px;font-size:0}.brand-mark{flex:0 0 36px}.sidebar-caption{font-size:0;padding:12px 0 5px}.nav-link{justify-content:center;padding:10px 6px;font-size:0}.nav-icon{font-size:18px}.sidebar-bottom{font-size:0;text-align:center}.sidebar-bottom:after{content:'EF';font-size:11px}.app-main{margin-left:78px}}
+    @media(max-width:620px){.app-sidebar{width:250px;transform:translateX(-105%);transition:transform .22s ease;padding:18px 15px}.app-sidebar.open{transform:translateX(0)}.app-sidebar .brand{justify-content:flex-start;font-size:20px;padding:3px 11px 22px}.app-sidebar .sidebar-caption{font-size:10px;padding:13px 12px 7px}.app-sidebar .nav-link{justify-content:flex-start;padding:9px 12px;font-size:13px}.app-sidebar .sidebar-bottom{font-size:11px;text-align:left}.app-sidebar .sidebar-bottom:after{content:none}.app-main{margin-left:0}.menu-toggle{display:block}.sidebar-scrim.show{display:block;position:fixed;z-index:30;inset:0;background:#152a25a8}.topbar{height:60px;padding:0 16px}.user-name{max-width:110px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.content-wrap{padding:22px 16px 36px}.site-footer{padding:14px 16px;flex-direction:column}}
   </style>
   {% block extra_head %}{% endblock %}
 </head>
-<body class="bg-gray-50 min-h-screen flex flex-col">
-
-  <!-- ── Navigation Bar ──────────────────────────────────────────────── -->
-  {% if current_user and current_user.is_authenticated %}
-  <nav class="bg-indigo-700 shadow-lg">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-      <div class="flex items-center justify-between h-16">
-
-        <!-- Brand -->
-        <div class="flex items-center space-x-3">
-          <span class="text-2xl">🎓</span>
-          <a href="/" class="text-white text-xl font-bold tracking-tight hover:text-indigo-200 transition">ExamFlow</a>
-        </div>
-
-        <!-- Right section -->
-        <div class="flex items-center space-x-4">
-          <!-- User name -->
-          <span class="text-indigo-100 text-sm font-medium hidden sm:block">
-            {{ current_user.name }}
-          </span>
-
-          <!-- Role badge -->
-          {% set role_colors = {
-            'student'  : 'bg-sky-500 text-white',
-            'admin'    : 'bg-rose-500 text-white',
-            'faculty'  : 'bg-emerald-500 text-white',
-            'examcell' : 'bg-amber-500 text-white'
-          } %}
-          <span class="px-2.5 py-0.5 rounded-full text-xs font-semibold
-            {{ role_colors.get(current_user.role, 'bg-gray-400 text-white') }}">
-            {{ current_user.role | capitalize }}
-          </span>
-
-          <!-- FSM diagram link -->
-          <a href="/fsm" class="text-indigo-200 hover:text-white text-sm hidden md:block transition">
-            FSM Diagram
-          </a>
-
-          <!-- Research papers link -->
-          <a href="/papers" class="text-indigo-200 hover:text-white text-sm hidden md:block transition">
-            Papers
-          </a>
-
-          <!-- Logout -->
-          <form action="/logout" method="post">
-            <input type="hidden" name="csrf_token" value="{{ csrf_token() if csrf_token is defined else '' }}" />
-            <button type="submit"
-              class="bg-white text-indigo-700 hover:bg-indigo-50 px-3 py-1.5 rounded-lg text-sm font-semibold shadow transition">
-              Logout
-            </button>
-          </form>
-        </div>
-
-      </div>
-    </div>
-  </nav>
+<body>
+{% if current_user and current_user.is_authenticated %}
+  {% set role = current_user.role %}
+  {% if role == 'Student' %}
+    {% set nav_items = [('⌂','Overview',url_for('student.dashboard')),('▦','Browse exams',url_for('student.exams')),('▤','My exams',url_for('student.my_exams')),('↩','Refunds',url_for('student.refunds')),('▣','Hall tickets',url_for('student.hall_tickets')),('◷','Results',url_for('student.results'))] %}
+  {% elif role == 'Faculty' %}
+    {% set nav_items = [('⌂','Workspace',url_for('faculty.dashboard')),('▦','Assigned exams',url_for('faculty.exams')),('✎','Evaluations',url_for('faculty.evaluations'))] %}
+  {% elif role == 'ExamCell' %}
+    {% set nav_items = [('⌂','Overview',url_for('examcell.dashboard')),('▦','Exam catalogue',url_for('examcell.exams')),('↩','Refund requests',url_for('examcell.refunds')),('▣','Hall tickets',url_for('examcell.hall_tickets')),('✓','Evaluation review',url_for('examcell.evaluations')),('▥','Reports',url_for('examcell.reports'))] %}
+  {% elif role == 'HOD' %}
+    {% set nav_items = [('⌂','Department overview',url_for('hod.dashboard')),('▦','Course catalog',url_for('hod.courses')),('♙','Faculty assignments',url_for('hod.faculty_assignments'))] %}
+  {% else %}
+    {% set nav_items = [('⌂','Overview',url_for('admin.dashboard')),('♙','Accounts',url_for('admin.users')),('≋','Audit trail',url_for('admin.audit'))] %}
   {% endif %}
-
-  <!-- ── Flash Messages ──────────────────────────────────────────────── -->
-  {% with messages = get_flashed_messages(with_categories=true) %}
-    {% if messages %}
-    <div class="max-w-7xl mx-auto w-full px-4 pt-4 space-y-2" id="flash-container">
-      {% for category, message in messages %}
-        {% if category == 'success' %}
-          <div class="flex items-start gap-3 bg-green-50 border border-green-300 text-green-800 px-4 py-3 rounded-lg shadow-sm flash-msg">
-            <span class="text-green-500 mt-0.5">✔</span>
-            <span class="text-sm">{{ message }}</span>
-            <button onclick="this.parentElement.remove()" class="ml-auto text-green-400 hover:text-green-600 font-bold">✕</button>
-          </div>
-        {% elif category == 'error' or category == 'danger' %}
-          <div class="flex items-start gap-3 bg-red-50 border border-red-300 text-red-800 px-4 py-3 rounded-lg shadow-sm flash-msg">
-            <span class="text-red-500 mt-0.5">✖</span>
-            <span class="text-sm">{{ message }}</span>
-            <button onclick="this.parentElement.remove()" class="ml-auto text-red-400 hover:text-red-600 font-bold">✕</button>
-          </div>
-        {% elif category == 'warning' %}
-          <div class="flex items-start gap-3 bg-yellow-50 border border-yellow-300 text-yellow-800 px-4 py-3 rounded-lg shadow-sm flash-msg">
-            <span class="text-yellow-500 mt-0.5">⚠</span>
-            <span class="text-sm">{{ message }}</span>
-            <button onclick="this.parentElement.remove()" class="ml-auto text-yellow-400 hover:text-yellow-600 font-bold">✕</button>
-          </div>
-        {% else %}
-          <div class="flex items-start gap-3 bg-blue-50 border border-blue-300 text-blue-800 px-4 py-3 rounded-lg shadow-sm flash-msg">
-            <span class="text-blue-500 mt-0.5">ℹ</span>
-            <span class="text-sm">{{ message }}</span>
-            <button onclick="this.parentElement.remove()" class="ml-auto text-blue-400 hover:text-blue-600 font-bold">✕</button>
-          </div>
-        {% endif %}
-      {% endfor %}
-    </div>
-    <script>
-      // Auto-dismiss flash messages after 5s
-      setTimeout(() => {
-        document.querySelectorAll('.flash-msg').forEach(el => {
-          el.style.transition = 'opacity 0.4s';
-          el.style.opacity = '0';
-          setTimeout(() => el.remove(), 400);
-        });
-      }, 5000);
-    </script>
-    {% endif %}
-  {% endwith %}
-
-  <!-- ── Main Content ────────────────────────────────────────────────── -->
-  <main class="flex-1 max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-8">
-    {% block content %}{% endblock %}
-  </main>
-
-  <!-- ── Footer ─────────────────────────────────────────────────────── -->
-  <footer class="bg-white border-t border-gray-200 mt-auto">
-    <div class="max-w-7xl mx-auto px-4 py-4 flex flex-col sm:flex-row items-center justify-between gap-2">
-      <p class="text-gray-500 text-xs">
-        University Examination Management System &nbsp;|&nbsp; Powered by Formal State Machines
-      </p>
-      <p class="text-gray-400 text-xs">
-        &copy; {{ now.year if now is defined else '2025' }} ExamFlow
-      </p>
-    </div>
-  </footer>
-
-  {% block extra_scripts %}{% endblock %}
+  <div class="sidebar-scrim" id="sidebar-scrim" onclick="toggleSidebar(false)"></div>
+  <aside class="app-sidebar" id="app-sidebar">
+    <a class="brand" href="{{ nav_items[0][2] }}"><span class="brand-mark">✳</span><span>ExamFlow</span></a>
+    <div class="sidebar-caption">{{ role|replace('ExamCell','Exam Cell') }} workspace</div>
+    <nav class="sidebar-nav" aria-label="Main navigation">
+      {% for icon,label,href in nav_items %}<a class="nav-link {{ 'active' if request.path == href else '' }}" href="{{ href }}" aria-label="{{ label }}" title="{{ label }}" {% if request.path == href %}aria-current="page"{% endif %}><span class="nav-icon" aria-hidden="true">{{ icon }}</span><span>{{ label }}</span></a>{% endfor %}
+    </nav>
+    <div class="sidebar-bottom">University Examination Management<br />A clear record at every step</div>
+  </aside>
+  <div class="app-main">
+    <header class="topbar"><div class="flex items-center gap-3"><button class="menu-toggle" type="button" onclick="toggleSidebar()" aria-label="Open navigation">☰ Menu</button><span class="text-xs text-gray-500 hidden sm:block">EXAM OPERATIONS</span></div><div class="user-area"><span class="user-name">{{ current_user.name }}</span><span class="role-pill">{{ role|replace('ExamCell','Exam Cell') }}</span><form action="{{ url_for('auth.logout') }}" method="post"><button class="logout" type="submit">Sign out</button></form></div></header>
+    {% with messages=get_flashed_messages(with_categories=true) %}{% if messages %}<div class="max-w-7xl mx-auto w-full px-4 pt-4 space-y-2" id="flash-container">{% for category,message in messages %}<div class="flex items-start gap-3 px-4 py-3 rounded-lg shadow-sm flash-msg {{ 'bg-green-50 border border-green-300 text-green-800' if category=='success' else 'bg-red-50 border border-red-300 text-red-800' if category in ['error','danger'] else 'bg-yellow-50 border border-yellow-300 text-yellow-800' if category=='warning' else 'bg-blue-50 border border-blue-300 text-blue-800' }}"><span>{{ '✓' if category=='success' else '!' }}</span><span class="text-sm">{{ message }}</span><button onclick="this.parentElement.remove()" class="ml-auto font-bold" type="button" aria-label="Dismiss">×</button></div>{% endfor %}</div>{% endif %}{% endwith %}
+{% endif %}
+  <main class="{{ 'content-wrap' if current_user and current_user.is_authenticated else 'max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-8' }}">{% block content %}{% endblock %}</main>
+{% if current_user and current_user.is_authenticated %}
+    <footer class="site-footer"><span>ExamFlow · University Examination Management</span><span>Formal workflow · Recorded decisions</span></footer>
+  </div>
+  <script>
+    function toggleSidebar(force){const side=document.getElementById('app-sidebar'),scrim=document.getElementById('sidebar-scrim');const open=typeof force==='boolean'?force:!side.classList.contains('open');side.classList.toggle('open',open);scrim.classList.toggle('show',open);}
+    document.addEventListener('keydown',e=>{if(e.key==='Escape')toggleSidebar(false)});
+    document.querySelectorAll('form[method="post" i]').forEach(form=>{if(!form.querySelector('input[name="csrf_token"]')){const input=document.createElement('input');input.type='hidden';input.name='csrf_token';input.value='{{ csrf_token() }}';form.appendChild(input)}});
+    setTimeout(()=>document.querySelectorAll('.flash-msg').forEach(el=>{el.style.transition='opacity .35s';el.style.opacity='0';setTimeout(()=>el.remove(),350)}),6000);
+  </script>
+{% endif %}
+{% block extra_scripts %}{% endblock %}
 </body>
 </html>
